@@ -1,0 +1,14 @@
+{
+  "name": "hardhat-project",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.5",
+    "ethers": "^5.0.0",
+    "hardhat": "^2.9.1"
+  },
+  "peerDependencies": {
+    "ethers": "^5.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0"
+  }
+}
