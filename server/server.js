@@ -12,6 +12,11 @@ import { createChallenge, verifyAuthorization } from './auth.js'
 
 dotenv.config()
 
+// phaser-on-nodejs provides requestAnimationFrame but Phaser loop cleanup expects the matching cancel API.
+if (globalThis.window && typeof globalThis.window.cancelAnimationFrame !== 'function') {
+    globalThis.window.cancelAnimationFrame = clearTimeout
+}
+
 const app = express()
 const server = http.createServer(app)
 
@@ -83,7 +88,8 @@ io.onConnection(channel => {
     //delete sessions from sessions map after dc
     channel.onDisconnect(() => {
         sessions.delete(address)
-        game.destroy(true)
+        game.scene.stop('adventure')
+        game.loop.stop()
         console.log(address, 'disconnected')
     })
 })
