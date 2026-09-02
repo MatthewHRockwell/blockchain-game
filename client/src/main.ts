@@ -2,16 +2,15 @@ import './style.css'
 import * as Phaser from 'phaser'
 import { MainScene } from './scenes/mainScene'
 import { StartScene } from './scenes/startScene'
-import { Plugin as NineSlicePlugin } from 'phaser3-nineslice'
 import { ConnectScene } from './scenes/connectScene'
-import ClaimScene from './scenes/claimScene'
 
 try {
   new Phaser.Game({
     type: Phaser.AUTO,
+    backgroundColor: '#101715',
     scale: {
       mode: Phaser.Scale.RESIZE,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
+      autoCenter: Phaser.Scale.NO_CENTER
     },
     physics: {
       default: 'arcade',
@@ -21,10 +20,7 @@ try {
       }
     },
     pixelArt: true,
-    scene: [StartScene, ConnectScene, MainScene, ClaimScene],
-    plugins: {
-      global: [NineSlicePlugin.DefaultCfg]
-    }
+    scene: [StartScene, ConnectScene, MainScene]
   })
 } catch (error) {
   console.error('Failed to initialize game:', error)

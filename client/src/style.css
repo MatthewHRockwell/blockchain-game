@@ -1,5 +1,221 @@
 * {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
   margin: 0;
-  padding: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
+}
+
+body {
+  background: #101715;
+  color: #f4edd8;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+canvas {
+  display: block;
+}
+
+#adventure-ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  color: #f4edd8;
+}
+
+.hud-main,
+.hud-side {
+  pointer-events: auto;
+}
+
+.hud-main {
+  position: absolute;
+  left: 18px;
+  right: 378px;
+  bottom: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 760px;
+}
+
+.game-title {
+  color: #f6c968;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.room-name {
+  margin-top: 4px;
+  color: #86d7c5;
+  font: 600 14px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.wallet-state {
+  padding: 7px 9px;
+  border: 1px solid rgba(134, 215, 197, 0.45);
+  background: rgba(10, 16, 15, 0.82);
+  color: #c6fff1;
+  font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.message-log {
+  width: min(760px, 100%);
+  height: 150px;
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid rgba(246, 201, 104, 0.35);
+  background: rgba(9, 13, 12, 0.86);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.28);
+  font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.log-entry + .log-entry {
+  margin-top: 7px;
+}
+
+.command-form {
+  width: min(760px, 100%);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(134, 215, 197, 0.45);
+  background: rgba(7, 12, 11, 0.94);
+}
+
+.command-form span {
+  color: #f6c968;
+  font: 700 18px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.command-input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #ffffff;
+  font: 16px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.command-form button,
+.claim-button {
+  border: 1px solid rgba(246, 201, 104, 0.6);
+  background: #d6a94f;
+  color: #17130d;
+  cursor: pointer;
+  font: 800 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 10px 12px;
+  text-transform: uppercase;
+}
+
+.command-form button:hover:not(:disabled),
+.claim-button:hover:not(:disabled) {
+  background: #f1c86a;
+}
+
+.command-form button:disabled,
+.claim-button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.hud-side {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  bottom: 18px;
+  width: 330px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 12px;
+}
+
+.panel {
+  border: 1px solid rgba(244, 237, 216, 0.16);
+  background: rgba(12, 18, 16, 0.88);
+  padding: 14px;
+  overflow: hidden;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  color: #86d7c5;
+  font: 800 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.objective-text,
+.inventory-list,
+.clue-list,
+.claim-status {
+  color: #f4edd8;
+  font-size: 14px;
+  line-height: 1.42;
+}
+
+.clue-panel {
+  overflow-y: auto;
+}
+
+.claim-panel {
+  display: grid;
+  gap: 10px;
+}
+
+#adventure-ui.compact .hud-main {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+}
+
+#adventure-ui.compact .hud-side {
+  left: 12px;
+  right: 12px;
+  top: calc(56vh + 8px);
+  bottom: 216px;
+  width: auto;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+}
+
+#adventure-ui.compact .clue-panel,
+#adventure-ui.compact .claim-panel {
+  min-height: 92px;
+}
+
+#adventure-ui.compact .message-log {
+  height: 118px;
+}
+
+@media (max-width: 560px) {
+  .game-title {
+    font-size: 20px;
+  }
+
+  #adventure-ui.compact .hud-side {
+    grid-template-columns: 1fr;
+    bottom: 222px;
+    overflow-y: auto;
+  }
+
+  .message-log {
+    height: 104px;
+  }
 }

@@ -1,247 +1,150 @@
 import * as Phaser from 'phaser'
-import WalletConnectProvider from "@walletconnect/web3-provider"
-import { ethers } from "ethers"
-import Web3Modal from "web3modal"
-import generateTypedAuth from "../../../commons/auth.mjs"
-import { BTN_GREY, CONNECT_SCENE, SIGNER, UPHEAVAL } from "../utils/keys"
+import { ethers } from 'ethers'
+import Web3Modal from 'web3modal'
+import generateTypedAuth from '../../../commons/auth.mjs'
+import { CONNECT_SCENE, SIGNER } from '../utils/keys'
 
-const connectWallet = async () => {
-    console.log('[Wallet] Starting wallet connection...')
+async function connectWallet() {
+  const hasInjectedProvider = typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined'
+  if (!hasInjectedProvider) {
+    throw new Error('No injected browser wallet found. Use a local wallet connected to Hardhat chain 31337.')
+  }
 
-    try {
-        // Check if MetaMask is installed
-        const hasMetaMask = typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined'
-        console.log('[Wallet] MetaMask available:', hasMetaMask)
-
-        const providerOptions: any = {}
-
-        // Add MetaMask if available
-        if (hasMetaMask) {
-            providerOptions.injected = {
-                display: {
-                    logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAA",
-                    name: "MetaMask",
-                    description: "Connect with MetaMask browser extension"
-                }
-            }
+  const web3Modal = new Web3Modal({
+    cacheProvider: false,
+    providerOptions: {
+      injected: {
+        display: {
+          name: 'Browser wallet',
+          description: 'Use a local Hardhat account on chain 31337'
         }
+      }
+    },
+    theme: 'dark'
+  })
 
-        // Add WalletConnect
-        providerOptions.walletconnect = {
-            package: WalletConnectProvider,
-            options: {
-                infuraId: "0e7fcc143f894d179aa51dbdc44d8ac5"
-            }
-        }
+  const instance = await web3Modal.connect()
+  const provider = new ethers.providers.Web3Provider(instance)
+  const network = await provider.getNetwork()
+  if (network.chainId !== 31337) {
+    throw new Error(`Wrong chain ${network.chainId}. Switch the wallet to localhost chain 31337.`)
+  }
 
-        console.log('[Wallet] Provider options configured:', Object.keys(providerOptions))
-
-        const web3Modal = new Web3Modal({
-            cacheProvider: true,
-            providerOptions,
-            theme: "dark"
-        })
-
-        console.log('[Wallet] Web3Modal created, showing provider selection...')
-        web3Modal.clearCachedProvider()
-
-        // Connect to provider
-        const instance = await web3Modal.connect()
-        console.log('[Wallet] Provider connected:', instance.constructor.name)
-
-        // Create ethers provider
-        const provider = new ethers.providers.Web3Provider(instance)
-        console.log('[Wallet] ethers provider created')
-
-        // Get signer
-        const signer = provider.getSigner()
-        console.log('[Wallet] Signer obtained')
-
-        // Get address to verify connection
-        const address = await signer.getAddress()
-        console.log('[Wallet] Connected wallet address:', address)
-
-        return signer
-    } catch (error: any) {
-        console.error('[Wallet] Connection error:', error.message || error)
-        throw error
-    }
+  return provider.getSigner()
 }
 
 export class StartScene extends Phaser.Scene {
-    button?: Phaser.GameObjects.RenderTexture
-    text?: Phaser.GameObjects.BitmapText
-    statusText?: Phaser.GameObjects.BitmapText
-    container?: Phaser.GameObjects.Container
-    signer?: ethers.providers.JsonRpcSigner
-    isConnecting = false
+  connectButton?: Phaser.GameObjects.Rectangle
+  buttonText?: Phaser.GameObjects.Text
+  statusText?: Phaser.GameObjects.Text
+  signer?: ethers.providers.JsonRpcSigner
+  isConnecting = false
 
-    constructor() {
-        super({
-            key: 'start-scene'
-        })
+  constructor() {
+    super({ key: 'start-scene' })
+  }
+
+  create() {
+    const loading = document.getElementById('loading')
+    if (loading) loading.style.display = 'none'
+
+    this.cameras.main.setBackgroundColor('0x101715')
+    this.renderIntro()
+    this.scale.on('resize', () => this.renderIntro())
+  }
+
+  renderIntro() {
+    this.children.removeAll()
+    const { width, height } = this.scale
+    const centerX = width * 0.5
+    const centerY = height * 0.5
+
+    this.add.rectangle(centerX, centerY, width, height, 0x101715)
+    this.add.rectangle(centerX, centerY - 10, Math.min(620, width - 48), 320, 0x17231f, 0.92)
+      .setStrokeStyle(2, 0xd6a94f, 0.55)
+
+    this.add.text(centerX, centerY - 116, 'THE LOST TEMPLE', {
+      color: '#f6c968',
+      fontFamily: 'Georgia, serif',
+      fontSize: `${Math.min(42, Math.max(28, width / 18))}px`,
+      fontStyle: 'bold'
+    }).setOrigin(0.5)
+
+    this.add.text(centerX, centerY - 62, 'A server-authoritative jungle parser adventure', {
+      color: '#86d7c5',
+      fontFamily: 'monospace',
+      fontSize: '16px'
+    }).setOrigin(0.5)
+
+    this.add.text(centerX, centerY - 20, 'Connect a local Hardhat wallet. Then move with WASD or arrows and type commands to solve the expedition.', {
+      color: '#f4edd8',
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '15px',
+      align: 'center',
+      wordWrap: { width: Math.min(520, width - 76) }
+    }).setOrigin(0.5)
+
+    this.connectButton = this.add.rectangle(centerX, centerY + 62, 220, 46, 0xd6a94f)
+      .setStrokeStyle(2, 0xf4dc9a, 0.8)
+      .setInteractive({ useHandCursor: true })
+    this.buttonText = this.add.text(centerX, centerY + 62, this.signer ? 'LOGIN' : 'CONNECT WALLET', {
+      color: '#17130d',
+      fontFamily: 'monospace',
+      fontSize: '15px',
+      fontStyle: 'bold'
+    }).setOrigin(0.5)
+
+    this.statusText = this.add.text(centerX, centerY + 118, '', {
+      color: '#f4edd8',
+      fontFamily: 'monospace',
+      fontSize: '13px',
+      align: 'center',
+      wordWrap: { width: Math.min(520, width - 76) }
+    }).setOrigin(0.5)
+
+    this.connectButton.on('pointerover', () => this.connectButton?.setFillStyle(0xf1c86a))
+    this.connectButton.on('pointerout', () => this.connectButton?.setFillStyle(0xd6a94f))
+    this.connectButton.on('pointerup', () => this.handleButtonClick())
+  }
+
+  async handleButtonClick() {
+    if (this.isConnecting) return
+    this.isConnecting = true
+    this.connectButton?.disableInteractive()
+    this.statusText?.setText(this.signer ? 'Authenticating...' : 'Connecting...')
+
+    try {
+      if (!this.signer) {
+        this.signer = await connectWallet()
+        this.registry.set(SIGNER, this.signer)
+        this.buttonText?.setText('LOGIN')
+        this.statusText?.setText('Wallet connected. Signing local challenge...')
+      }
+
+      await this.authenticate()
+    } catch (error: any) {
+      this.statusText?.setColor('#ff9b85')
+      this.statusText?.setText(error?.message || 'Connection failed.')
+      this.isConnecting = false
+      this.connectButton?.setInteractive({ useHandCursor: true })
     }
+  }
 
-    preload() {
-        this.load.bitmapFont(UPHEAVAL, '/fonts/upheaval.png', '/fonts/upheaval.xml')
-        this.load.image(BTN_GREY, '/ui/btn-grey.png')
-    }
+  async authenticate() {
+    if (!this.signer) throw new Error('No signer available.')
 
-    create() {
-        console.log('[Scene] StartScene created')
+    const address = await this.signer.getAddress()
+    const host = import.meta.env.VITE_HOST ? import.meta.env.VITE_HOST : 'http://localhost:9208'
+    const res = await fetch(host + '/challenge', {
+      method: 'POST',
+      body: address
+    })
 
-        //remove loading message
-        const loading = document.getElementById('loading')
-        if (loading) loading.style.display = 'none'
+    if (!res.ok) throw new Error(`Challenge request failed: ${res.status}`)
 
-        //set bg color
-        this.cameras.main.setBackgroundColor('0x171717')
-
-        //get screen height and width
-        const { width, height } = this.scale
-
-        //add button components
-        this.button = this.add.nineslice(0, 0, 100, 18, BTN_GREY, 3, 3, 3, 3)
-            .setOrigin(0.5, 0.5)
-            .setScale(3, 3)
-            .setInteractive()
-
-        this.text = this.add.bitmapText(0, 0, UPHEAVAL, 'connect wallet', 32)
-            .setOrigin(0.5, 0.5)
-
-        //add status text below button
-        this.statusText = this.add.bitmapText(0, 80, UPHEAVAL, '', 16)
-            .setOrigin(0.5, 0.5)
-            .setTint(0x44fff9)
-
-        this.container = this.add.container(width * 0.5, height * 0.5, [this.button, this.text, this.statusText])
-
-        //add event listeners
-        this.scale.on('resize', () => this.resize())
-
-        this.button.on('pointerover', () => {
-            if (!this.isConnecting) {
-                this.button?.setTint(0x44fff9)
-            }
-        })
-
-        this.button.on('pointerout', () => {
-            if (!this.isConnecting) {
-                this.button?.clearTint()
-            }
-        })
-
-        this.button.on('pointerdown', () => {
-            if (!this.isConnecting) {
-                this.button?.setTint(0x2aa19d)
-            }
-        })
-
-        this.button.on('pointerup', async () => {
-            this.button?.clearTint()
-            await this.handleButtonClick()
-        })
-
-        console.log('[Scene] StartScene ready')
-    }
-
-    async handleButtonClick() {
-        if (this.isConnecting) return
-
-        this.isConnecting = true
-        this.button?.disableInteractive()
-        this.statusText?.setText('connecting...')
-
-        console.log('[Button] Connect button clicked')
-
-        if (!this.signer) {
-            try {
-                console.log('[Button] No signer yet, starting wallet connection...')
-                this.signer = await connectWallet()
-
-                if (this.signer) {
-                    console.log('[Button] Signer obtained successfully')
-                    this.registry.set(SIGNER, this.signer)
-                    this.text?.setText('login')
-                    this.statusText?.setText('wallet connected')
-
-                    // Auto-proceed to login after short delay
-                    this.time.delayedCall(500, () => {
-                        this.authenticate()
-                    })
-                } else {
-                    throw new Error('No provider returned from Web3Modal')
-                }
-            } catch (error: any) {
-                console.error('[Button] Wallet connection failed:', error)
-                this.statusText?.setText('connection failed')
-                this.statusText?.setTint(0xff6b6b)
-                this.isConnecting = false
-                this.button?.setInteractive()
-
-                // Show error in alert
-                const errorMsg = error?.message || 'Failed to connect wallet'
-                alert(`Wallet Connection Error:\n\n${errorMsg}\n\nMake sure you have MetaMask or another blockchain wallet installed.`)
-            }
-        } else {
-            // Already have signer, proceed to authenticate
-            console.log('[Button] Signer exists, proceeding to authenticate')
-            this.statusText?.setText('authenticating...')
-            try {
-                await this.authenticate()
-            } catch (error) {
-                console.error('[Button] Authentication failed:', error)
-                this.statusText?.setText('authentication failed')
-                this.statusText?.setTint(0xff6b6b)
-                this.isConnecting = false
-                this.button?.setInteractive()
-            }
-        }
-    }
-
-    resize() {
-        //recenter on resize
-        const { width, height } = this.scale
-        this.container?.setPosition(width * 0.5, height * 0.5)
-    }
-
-    async authenticate() {
-        try {
-            console.log('[Auth] Starting authentication...')
-
-            const address = await this.signer?.getAddress()
-            console.log('[Auth] Got address:', address)
-
-            const host = import.meta.env.VITE_HOST ? import.meta.env.VITE_HOST : "http://localhost:9208"
-            console.log('[Auth] Server host:', host)
-
-            //get challenge from server
-            console.log('[Auth] Fetching challenge from server...')
-            const res = await fetch(host + "/challenge", {
-                method: "POST",
-                body: address,
-            })
-
-            if (!res.ok) {
-                throw new Error(`Server error: ${res.status}`)
-            }
-
-            const challenge = await res.text()
-            console.log('[Auth] Got challenge from server')
-
-            const { domain, types, value } = generateTypedAuth(challenge)
-            console.log('[Auth] Generated typed data')
-
-            //generate signature
-            console.log('[Auth] Requesting signature from wallet...')
-            const sig = await this.signer?._signTypedData(domain, types, value)
-            console.log('[Auth] Signature obtained')
-
-            console.log('[Auth] Authentication successful, switching to CONNECT_SCENE')
-            this.scene.start(CONNECT_SCENE, { sig, address })
-        } catch (error: any) {
-            console.error('[Auth] Authentication error:', error)
-            throw error
-        }
-    }
+    const challenge = await res.text()
+    const { domain, types, value } = generateTypedAuth(challenge)
+    const sig = await this.signer._signTypedData(domain, types, value)
+    this.scene.start(CONNECT_SCENE, { sig, address })
+  }
 }
