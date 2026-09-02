@@ -7,12 +7,11 @@ import { createChallenge, verifyAuthorization } from "../server/auth.js"
 const require = createRequire(import.meta.url)
 const { ethers } = require("../server/node_modules/ethers")
 
-const DEV_KEY_0 = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 
 test("valid local development signature is accepted", async () => {
   const authRequest = new Map()
   const sessions = new Map()
-  const wallet = new ethers.Wallet(DEV_KEY_0)
+  const wallet = ethers.Wallet.createRandom()
   const address = await wallet.getAddress()
   const challenge = createChallenge(authRequest, address)
   const { domain, types, value } = generateTypedAuth(challenge)
@@ -26,7 +25,7 @@ test("valid local development signature is accepted", async () => {
 test("invalid local development signature is rejected", async () => {
   const authRequest = new Map()
   const sessions = new Map()
-  const wallet = new ethers.Wallet(DEV_KEY_0)
+  const wallet = ethers.Wallet.createRandom()
   const attacker = ethers.Wallet.createRandom()
   const address = await wallet.getAddress()
   const challenge = createChallenge(authRequest, address)
@@ -40,7 +39,7 @@ test("invalid local development signature is rejected", async () => {
 
 test("active duplicate session is rejected", async () => {
   const authRequest = new Map()
-  const wallet = new ethers.Wallet(DEV_KEY_0)
+  const wallet = ethers.Wallet.createRandom()
   const address = await wallet.getAddress()
   const sessions = new Map([[address, {}]])
   const challenge = createChallenge(authRequest, address)

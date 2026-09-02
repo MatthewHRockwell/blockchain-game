@@ -8,6 +8,7 @@ import "../src/ClaimManagerERC721.sol";
 contract ContractTest is Test {
     ClaimVerifier verifier;
     ClaimManagerERC721 manager;
+    uint256 constant TRUSTED_TEST_SIGNER = 1;
 
     function setUp() public {
         verifier = new ClaimVerifier();
@@ -18,11 +19,7 @@ contract ContractTest is Test {
             address(verifier)
         );
 
-        address trusted = vm.addr(
-            uint256(
-                0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-            )
-        );
+        address trusted = vm.addr(TRUSTED_TEST_SIGNER);
         emit log_named_address("trusted address", trusted);
 
         verifier.setIsTrusted(trusted, true);
@@ -52,12 +49,7 @@ contract ContractTest is Test {
     function testClaim() public {
         bytes32 digest = getDigest();
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            uint256(
-                0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-            ),
-            digest
-        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(TRUSTED_TEST_SIGNER, digest);
 
         verifier.claim(
             address(manager),
@@ -77,12 +69,7 @@ contract ContractTest is Test {
 
     function testClaimTwice() public {
         bytes32 digest = getDigest();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            uint256(
-                0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-            ),
-            digest
-        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(TRUSTED_TEST_SIGNER, digest);
 
         verifier.claim(
             address(manager),
@@ -113,12 +100,7 @@ contract ContractTest is Test {
     function testUntrustedSigner(uint256 privatekey) public {
         vm.assume(privatekey != 0);
         vm.assume(privatekey < (2 ^ 256) - 1);
-        vm.assume(
-            privatekey !=
-                uint256(
-                    0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-                )
-        );
+        vm.assume(privatekey != TRUSTED_TEST_SIGNER);
 
         bytes32 digest = getDigest();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privatekey, digest);

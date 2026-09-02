@@ -22,12 +22,15 @@ const authRequest = new Map()
 const sessions = new Map()
 const playerStates = new Map()
 
-//generate signer
-const wallet = process.env.NODE_ENV === 'production' ? ethers.Wallet.createRandom() : new ethers.Wallet("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545"
+const wallet = new ethers.providers.JsonRpcProvider(rpcUrl).getSigner(0)
 let signerAddress
 wallet.getAddress().then(address => {
     console.log("trusted address: ", address)
     signerAddress = address
+}).catch(error => {
+    console.error("trusted signer unavailable:", error.message)
+    signerAddress = 'unavailable'
 })
 
 //GET signer address
