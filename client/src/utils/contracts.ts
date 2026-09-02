@@ -4,7 +4,7 @@ import { addresses } from "../../../commons/contracts.mjs"
 
 const factories = {
     CLAIM_VERIFIER: ClaimVerifier__factory,
-    DUNGEON: ClaimManagerERC721__factory
+    ARTIFACT_REWARD: ClaimManagerERC721__factory
 }
 
 export const getContract = (name: string, signer: ethers.Signer) => {

@@ -21,7 +21,7 @@ maybeTest("trusted completed packet can claim and untrusted packet cannot", asyn
   const playerAddress = await player.getAddress()
   const untrustedAddress = await untrusted.getAddress()
   const verifierAddress = addresses[contracts.CLAIM_VERIFIER]
-  const managerAddress = addresses[contracts.DUNGEON]
+  const managerAddress = addresses[contracts.ARTIFACT_REWARD]
   const verifier = new ethers.Contract(verifierAddress, verifierArtifact.abi, provider)
   const manager = new ethers.Contract(managerAddress, managerArtifact.abi, provider)
   const deadline = ethers.constants.MaxUint256

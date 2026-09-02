@@ -22,7 +22,7 @@ export default class AdventureScene extends Phaser.Scene {
   adventureState
   movement = [false, false, false, false]
   lastSnapshotAt = 0
-  claimManager = addresses[contracts.DUNGEON]
+  claimManager = addresses[contracts.ARTIFACT_REWARD]
 
   constructor() {
     super("adventure")

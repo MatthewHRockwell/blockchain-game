@@ -9,7 +9,7 @@ task("deploy", "deploy contracts")
         await claimVerifier.deployed()
     
         const ClaimManagerERC721 = await ethers.getContractFactory('ClaimManagerERC721')
-        const claimManagerERC721 = await ClaimManagerERC721.deploy('Coin', 'COIN', 'blockchain-game-nutcloud-vercel.app', claimVerifier.address)
+        const claimManagerERC721 = await ClaimManagerERC721.deploy('Lost Temple Artifact', 'LTA', 'lost-temple-local-artifact/', claimVerifier.address)
         await claimManagerERC721.deployed()
 
         let tx = await claimVerifier.setIsTrusted("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", true)
@@ -20,7 +20,7 @@ task("deploy", "deploy contracts")
     
         console.log(
             "ClaimVerifier deployed to: ", claimVerifier.address,
-            "ClaimManagerERC721 deployed to: ", claimManagerERC721.address,
+            "ClaimManagerERC721 artifact reward deployed to: ", claimManagerERC721.address,
         )
     })
 
@@ -34,7 +34,7 @@ task("deploy", "deploy contracts")
 //     await claimVerifier.deployed()
 
 //     const ClaimManagerERC721 = await ethers.getContractFactory('ClaimManagerERC721')
-//     const claimManagerERC721 = await ClaimManagerERC721.deploy('Coin', 'COIN', 'blockchain-game-nutcloud-vercel.app', claimVerifier.address)
+//     const claimManagerERC721 = await ClaimManagerERC721.deploy('Lost Temple Artifact', 'LTA', 'lost-temple-local-artifact/', claimVerifier.address)
 //     await claimManagerERC721.deployed()
 
 //     let tx = await claimVerifier.setIsTrusted("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", true)
@@ -45,7 +45,7 @@ task("deploy", "deploy contracts")
 
 //     console.log(
 //         "ClaimVerifier deployed to: ", claimVerifier.address,
-//         "ClaimManagerERC721 deployed to: ", claimManagerERC721.address,
+//         "ClaimManagerERC721 artifact reward deployed to: ", claimManagerERC721.address,
 //         "Set trusted signer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
 //     )
 // }

@@ -12,9 +12,9 @@ contract ContractTest is Test {
     function setUp() public {
         verifier = new ClaimVerifier();
         manager = new ClaimManagerERC721(
-            "Coin",
-            "COIN",
-            "example.xyz",
+            "Lost Temple Artifact",
+            "LTA",
+            "lost-temple-local-artifact/",
             address(verifier)
         );
 

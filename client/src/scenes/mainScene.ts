@@ -135,7 +135,7 @@ export class MainScene extends Phaser.Scene {
     })
     this.channel?.on(NETWORK_EVENTS.CLAIM, (payload: ClaimPayload | string) => {
       this.claimPayload = typeof payload === 'string'
-        ? { sig: payload, request: addresses[contracts.DUNGEON], deadline: ethers.constants.MaxUint256.toString(), receiver: this.state?.address || '' }
+        ? { sig: payload, request: addresses[contracts.ARTIFACT_REWARD], deadline: ethers.constants.MaxUint256.toString(), receiver: this.state?.address || '' }
         : payload
       this.addMessage('The server signed your reward packet. The chain still expects you to do the clicking.')
       this.renderUi()
@@ -473,7 +473,7 @@ export class MainScene extends Phaser.Scene {
   async checkRewardBalance() {
     try {
       if (!this.signer) return
-      const manager = getContract(contracts.DUNGEON, this.signer) as any
+      const manager = getContract(contracts.ARTIFACT_REWARD, this.signer) as any
       const balance = await manager.balanceOf(await this.signer.getAddress())
       if (balance.gt(0)) {
         this.claimed = true
