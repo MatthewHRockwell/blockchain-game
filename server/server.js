@@ -8,11 +8,7 @@ import cors from 'cors'
 import { ethers } from "ethers"
 import dotenv from 'dotenv'
 import { iceServers } from "@geckos.io/server"
-import { fileURLToPath } from 'url'
-import path from 'path'
 import { createChallenge, verifyAuthorization } from './auth.js'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 dotenv.config()
 

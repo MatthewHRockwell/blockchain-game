@@ -19,7 +19,7 @@ const config = {
                 nodePolyFills()
             ]
         },
-        // ↓ Needed for build if using WalletConnect and other providers
+        // Needed for legacy ethers/Web3Modal dependencies.
         commonjsOptions: {
             transformMixedEsModules: true
         }
