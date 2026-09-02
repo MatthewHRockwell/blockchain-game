@@ -11,6 +11,8 @@
     "server": "npm run server --prefix server",
     "client": "npm run dev --prefix client",
     "node": "npm run node --prefix contracts",
-    "deploy": "npm run deploy --prefix contracts"
+    "deploy": "npm run deploy --prefix contracts",
+    "test": "node --test test/*.test.mjs",
+    "test:blockchain": "BLOCKCHAIN_TESTS=1 node --test test/blockchain-claim.test.mjs"
   }
 }
