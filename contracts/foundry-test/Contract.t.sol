@@ -2,8 +2,8 @@
 pragma solidity 0.8.13;
 
 import "forge-std/Test.sol";
-import "../ClaimVerifier.sol";
-import "../ClaimManagerERC721.sol";
+import "../src/ClaimVerifier.sol";
+import "../src/ClaimManagerERC721.sol";
 
 contract ContractTest is Test {
     ClaimVerifier verifier;

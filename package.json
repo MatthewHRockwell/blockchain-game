@@ -1,10 +1,16 @@
 {
-    "type": "module",
-    "scripts": {
-        "postinstall": "npm install --prefix server && npm install --prefix client",
-        "node": "cd contracts && npx hardhat node",
-        "deploy": "cd contracts && npx hardhat deploy --network localhost",
-        "client": "cd client && npx vite",
-        "server": "node start-server.js"
-    }
+  "type": "module",
+  "packageManager": "npm@10.8.2",
+  "engines": {
+    "node": ">=20.20.2 <21"
+  },
+  "scripts": {
+    "install:server": "npm install --prefix server",
+    "install:client": "npm install --prefix client",
+    "install:contracts": "npm install --prefix contracts",
+    "server": "npm run server --prefix server",
+    "client": "npm run dev --prefix client",
+    "node": "npm run node --prefix contracts",
+    "deploy": "npm run deploy --prefix contracts"
+  }
 }

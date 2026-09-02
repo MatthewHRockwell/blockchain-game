@@ -2,7 +2,7 @@
 pragma solidity 0.8.13;
 
 import "./Trustus.sol";
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./ClaimManager.sol";
 
 /// @title Claim

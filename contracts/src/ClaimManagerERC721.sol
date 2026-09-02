@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import "solmate/tokens/ERC721.sol";
+import "solmate/src/tokens/ERC721.sol";
 import "./ClaimManager.sol";
 
 ///@title ClaimManagerERC721

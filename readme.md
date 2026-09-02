@@ -12,33 +12,35 @@ Here, I aim to design a _trust-minimized_ crypto game implementation that can su
 
 ## Running the example
 
-**ONE-STEP Installation** - Installs everything automatically (root, server, client)
+Baseline runtime: Node v20.20.2 with npm v10.8.2. The server native WebRTC dependency `node-datachannel@0.4.3` did not install under Node v22.22.0 in this environment.
+
+Install dependencies explicitly from the repository root:
 ```
-git clone https://github.com/davideliasdev05/blockchain-game.git
-cd blockchain-game
-npm install
+npm run install:contracts
+npm run install:server
+npm run install:client
 ```
 
 Then in separate terminals:
 
-**Terminal 1** - Start multiplayer game server
-```
-npm run server
-```
-
-**Terminal 2** - Start client
-```
-npm run client
-```
-
-**Terminal 3** - Start local blockchain node
+**Terminal 1** - Start local blockchain node
 ```
 npm run node
 ```
 
-**Terminal 4** - Deploy smart contracts
+**Terminal 2** - Deploy smart contracts
 ```
 npm run deploy
+```
+
+**Terminal 3** - Start multiplayer game server
+```
+npm run server
+```
+
+**Terminal 4** - Start client
+```
+npm run client
 ```
 
 Then open your browser to: **http://localhost:3000**
