@@ -41,6 +41,17 @@ maybeTest("trusted completed packet can claim and untrusted packet cannot", asyn
     await tx.wait()
   }
   assert.equal((await manager.balanceOf(playerAddress)).toString(), "1")
+  await assert.rejects(
+    verifier.connect(player).callStatic.claim(managerAddress, {
+      v: trustedSplit.v,
+      r: trustedSplit.r,
+      s: trustedSplit.s,
+      request: managerAddress,
+      deadline,
+      receiver: playerAddress
+    }),
+    /already claimed|revert|CALL_EXCEPTION/
+  )
 
   const badSig = await signPacket(untrusted, managerAddress, deadline, untrustedAddress)
   const badSplit = ethers.utils.splitSignature(badSig)

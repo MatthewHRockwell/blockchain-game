@@ -68,7 +68,7 @@ export const ROOMS = {
       {
         id: OBJECT_IDS.AIRCRAFT,
         name: "damaged aircraft",
-        aliases: ["aircraft", "plane", "wreck", "fuselage", "engine"],
+        aliases: ["aircraft", "airplane", "plane", "wreck", "fuselage", "engine"],
         position: { x: 180, y: 168 },
         radius: 78,
         solid: { x: 92, y: 118, width: 175, height: 58 },

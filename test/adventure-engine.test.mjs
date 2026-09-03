@@ -111,6 +111,37 @@ test("anti-cheat packets cannot mutate authoritative state", () => {
   assert.equal(nonString.state.flags[FLAG_IDS.MACHETE_COLLECTED], false)
   assert.equal(nonString.state.currentRoom, ROOM_IDS.CRASH_SITE)
 
+  const forgedStatePacket = applyCommand(state, {
+    currentRoom: ROOM_IDS.INNER_TEMPLE,
+    inventory: [ITEM_IDS.MACHETE, ITEM_IDS.ROPE, ITEM_IDS.ARTIFACT],
+    flags: {
+      [FLAG_IDS.MACHETE_COLLECTED]: true,
+      [FLAG_IDS.VINES_CUT]: true,
+      [FLAG_IDS.ROPE_COLLECTED]: true,
+      [FLAG_IDS.BRIDGE_REPAIRED]: true,
+      [FLAG_IDS.JOURNAL_READ]: true,
+      [FLAG_IDS.TEMPLE_PUZZLE_SOLVED]: true,
+      [FLAG_IDS.ARTIFACT_RECOVERED]: true
+    },
+    completed: true,
+    rewardAuthorized: true
+  })
+  assert.equal(forgedStatePacket.state.currentRoom, ROOM_IDS.CRASH_SITE)
+  assert.deepEqual(forgedStatePacket.state.inventory, [])
+  assert.equal(forgedStatePacket.state.completed, false)
+  assert.equal(forgedStatePacket.state.rewardAuthorized, false)
+
+  const forgedJson = applyCommand(state, JSON.stringify({
+    currentRoom: ROOM_IDS.INNER_TEMPLE,
+    inventory: [ITEM_IDS.MACHETE],
+    completed: true,
+    rewardAuthorized: true
+  }))
+  assert.equal(forgedJson.state.currentRoom, ROOM_IDS.CRASH_SITE)
+  assert.deepEqual(forgedJson.state.inventory, [])
+  assert.equal(forgedJson.state.completed, false)
+  assert.equal(forgedJson.state.rewardAuthorized, false)
+
   const forgedCompletion = applyCommand(state, "artifactRecovered true rewardAuthorized true")
   assert.equal(forgedCompletion.state.completed, false)
   assert.equal(forgedCompletion.state.rewardAuthorized, false)
@@ -133,4 +164,10 @@ test("server-authorized room exits require position and prerequisites", () => {
   const blocked = applyCommand(result.state, "go east")
   assert.equal(blocked.state.currentRoom, ROOM_IDS.JUNGLE_TRAIL)
   assert.match(blocked.message, /vines disagree/i)
+
+  const unsolvedTemple = stateIn(ROOM_IDS.TEMPLE_ENTRANCE, OBJECT_IDS.TEMPLE_DOOR)
+  unsolvedTemple.position = { x: 610, y: 180 }
+  const bypass = applyCommand(unsolvedTemple, "go east")
+  assert.equal(bypass.state.currentRoom, ROOM_IDS.TEMPLE_ENTRANCE)
+  assert.match(bypass.message, /door remains sealed/i)
 })
