@@ -188,20 +188,46 @@ canvas {
 #adventure-ui.compact .hud-side {
   left: 12px;
   right: 12px;
-  top: calc(56vh + 8px);
+  top: calc(var(--world-height, 56vh) + 8px);
   bottom: 216px;
   width: auto;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-rows: auto auto;
+  align-content: start;
+  overflow-y: auto;
+}
+
+#adventure-ui.compact .panel {
+  padding: 10px;
+}
+
+#adventure-ui.compact .panel h2 {
+  margin-bottom: 6px;
+}
+
+#adventure-ui.compact .objective-text,
+#adventure-ui.compact .inventory-list,
+#adventure-ui.compact .clue-list,
+#adventure-ui.compact .claim-status {
+  font-size: 13px;
+  line-height: 1.32;
 }
 
 #adventure-ui.compact .clue-panel,
 #adventure-ui.compact .claim-panel {
-  min-height: 92px;
+  min-height: 86px;
+}
+
+#adventure-ui.compact .claim-panel {
+  gap: 8px;
+}
+
+#adventure-ui.compact .claim-button {
+  padding: 8px 10px;
 }
 
 #adventure-ui.compact .message-log {
-  height: 118px;
+  height: 92px;
 }
 
 @media (max-width: 560px) {
@@ -210,12 +236,14 @@ canvas {
   }
 
   #adventure-ui.compact .hud-side {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: start;
     bottom: 222px;
     overflow-y: auto;
   }
 
-  .message-log {
-    height: 104px;
+  #adventure-ui.compact .message-log {
+    height: 92px;
   }
 }

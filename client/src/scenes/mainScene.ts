@@ -222,11 +222,12 @@ export class MainScene extends Phaser.Scene {
     this.uiRoot?.classList.toggle('compact', compact)
 
     const viewportWidth = compact ? window.innerWidth : Math.max(420, window.innerWidth - 360)
-    const viewportHeight = compact ? Math.max(300, Math.floor(window.innerHeight * 0.56)) : window.innerHeight
+    const viewportHeight = compact ? Math.max(280, Math.floor(window.innerHeight * 0.46)) : window.innerHeight
+    this.uiRoot?.style.setProperty("--world-height", `${viewportHeight}px`)
     const camera = this.cameras.main
     camera.setViewport(0, 0, viewportWidth, viewportHeight)
     const zoom = Math.min(viewportWidth / WORLD_SIZE.width, viewportHeight / WORLD_SIZE.height) * 0.92
-    camera.setZoom(Math.max(0.72, zoom))
+    camera.setZoom(Math.max(compact ? 0.54 : 0.72, zoom))
     camera.centerOn(WORLD_SIZE.width / 2, WORLD_SIZE.height / 2)
   }
 

@@ -5,7 +5,7 @@ import { StartScene } from './scenes/startScene'
 import { ConnectScene } from './scenes/connectScene'
 
 try {
-  new Phaser.Game({
+  const game = new Phaser.Game({
     type: Phaser.AUTO,
     backgroundColor: '#101715',
     scale: {
@@ -22,6 +22,10 @@ try {
     pixelArt: true,
     scene: [StartScene, ConnectScene, MainScene]
   })
+
+  if (import.meta.env.DEV) {
+    ;(window as Window & { __LOST_TEMPLE_GAME__?: Phaser.Game }).__LOST_TEMPLE_GAME__ = game
+  }
 } catch (error) {
   console.error('Failed to initialize game:', error)
   document.body.innerHTML = `<h1>Error Loading Game</h1><p>${error instanceof Error ? error.message : String(error)}</p>`

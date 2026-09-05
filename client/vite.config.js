@@ -6,6 +6,11 @@ const production = process.env.NODE_ENV === 'production'
  * @type {import('vite').UserConfig}
  */
 const config = {
+    server: {
+        port: 3000,
+        strictPort: true
+    },
+
     plugins: [
         !production && nodePolyFills({
             include: ['node_modules/**/*.js', new RegExp('node_modules/.vite/.*js')]

@@ -8,7 +8,17 @@ Attribution: this assessment baseline is derived from the original `davideliasde
 
 ## Screenshots
 
-Screenshots are intentionally left as a publication step after final manual playtest. The running client is available at `http://localhost:3000` during local validation.
+Captured during local end-to-end QA against the localhost stack.
+
+![Start screen](readme/lost-temple-start.png)
+
+![Connected local wallet](readme/lost-temple-connected.png)
+
+![Reward authorized before claim](readme/lost-temple-pre-claim.png)
+
+![NFT claimed on local Hardhat chain](readme/lost-temple-claimed.png)
+
+![Mobile claimed layout](readme/lost-temple-mobile-claimed.png)
 
 ## Architecture
 
