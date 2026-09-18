@@ -19,6 +19,9 @@
   "scripts": {
     "server": "nodemon server.js"
   },
+  "nodemonConfig": {
+    "ignore": ["data/*"]
+  },
   "engines": {
     "node": ">=20.20.2 <21"
   }

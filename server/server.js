@@ -9,8 +9,13 @@ import { ethers } from "ethers"
 import dotenv from 'dotenv'
 import { iceServers } from "@geckos.io/server"
 import { createChallenge, verifyAuthorization } from './auth.js'
+import { createStateStore } from './persistence.js'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
 dotenv.config()
+
+const serverDir = path.dirname(fileURLToPath(import.meta.url))
 
 // phaser-on-nodejs provides requestAnimationFrame but Phaser loop cleanup expects the matching cancel API.
 if (globalThis.window && typeof globalThis.window.cancelAnimationFrame !== 'function') {
@@ -25,7 +30,9 @@ app.use(express.text())
 
 const authRequest = new Map()
 const sessions = new Map()
-const playerStates = new Map()
+const playerStates = createStateStore({
+    filePath: process.env.STATE_FILE || path.join(serverDir, 'data', 'player-states.json')
+})
 
 const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545"
 const wallet = new ethers.providers.JsonRpcProvider(rpcUrl).getSigner(0)
@@ -90,9 +97,18 @@ io.onConnection(channel => {
         sessions.delete(address)
         game.scene.stop('adventure')
         game.loop.stop()
+        playerStates.flush()
         console.log(address, 'disconnected')
     })
 })
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.once(signal, () => {
+        playerStates.flush()
+        process.exit(0)
+    })
+}
+process.on('exit', () => playerStates.flush())
 
 server.listen(9208, () => {
     console.log("authoritative adventure server listening on 9208")
