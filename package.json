@@ -8,6 +8,8 @@
     "install:server": "npm install --prefix server",
     "install:client": "npm install --prefix client",
     "install:contracts": "npm install --prefix contracts",
+    "install:e2e": "npm install --prefix scripts",
+    "e2e:screenshots": "node scripts/e2e-screenshots.mjs",
     "server": "npm run server --prefix server",
     "client": "npm run dev --prefix client",
     "node": "npm run node --prefix contracts",

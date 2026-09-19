@@ -195,6 +195,17 @@ With the Vite dev server running, open `http://localhost:3000/preview.html` to r
 
 The harness is dev-only; `preview.html` is not part of the production build.
 
+### End-to-end screenshot harness
+
+`scripts/e2e-screenshots.mjs` plays the entire adventure in headless Chrome with a scripted local Hardhat wallet: it connects, signs the EIP-712 auth challenge, walks all six rooms, solves the glyph puzzle, receives the server-signed reward packet, claims the NFT on the local chain, verifies the on-chain balance, and recaptures every readme screenshot (including the mobile layout via a reconnect). With the full stack running (`npm run node`, `npm run deploy`, `npm run server`, `npm run client`) and a fresh game-server session:
+
+```bash
+npm run install:e2e
+npm run e2e:screenshots
+```
+
+It needs a local Chrome/Chromium (`CHROME_BIN` to override) and uses Hardhat development account #1 as the player.
+
 ## Project Structure
 
 ```text
@@ -205,6 +216,7 @@ server/game/scenes/       Headless Phaser authoritative session scene
 client/src/scenes/        Wallet connection, Geckos connection, rendered adventure UI
 contracts/src/            ClaimVerifier and ClaimManagerERC721 Solidity contracts
 test/                     Node test-runner coverage for parser, progression, auth, rewards
+scripts/                  Headless end-to-end gameplay, claim, and screenshot harness
 ```
 
 ## Design Decisions
@@ -219,7 +231,7 @@ test/                     Node test-runner coverage for parser, progression, aut
 ## Known Limitations
 
 - State persistence is in memory for the running server process only.
-- Manual wallet UI testing still requires a browser wallet configured for Hardhat localhost.
+- Interactive play still requires a browser wallet configured for Hardhat localhost; the automated claim flow is covered by the end-to-end harness in `scripts/`.
 - The Vite/Web3Modal legacy dependency stack produces a large production bundle; major upgrades were intentionally deferred.
 - The art direction is fully procedural (layered scenery, particles, and lighting drawn in code) plus the starter knight sprite; there is no external sprite pack.
 

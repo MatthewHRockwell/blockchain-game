@@ -1,0 +1,11 @@
+{
+  "name": "@blockchain-game/scripts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "playwright-core": "^1.49.1"
+  },
+  "engines": {
+    "node": ">=20.20.2 <21"
+  }
+}
