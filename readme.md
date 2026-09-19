@@ -185,6 +185,16 @@ Build the production client bundle:
 npm run build --prefix client
 ```
 
+### Room preview harness
+
+With the Vite dev server running, open `http://localhost:3000/preview.html` to render any room in `MainScene` against a stub channel and fabricated state - no wallet, game server, or chain required. Useful for art iteration and screenshots. Query parameters:
+
+```text
+/preview.html?room=river-crossing&flags=macheteCollected,vinesCut&inventory=machete
+```
+
+The harness is dev-only; `preview.html` is not part of the production build.
+
 ## Project Structure
 
 ```text
@@ -211,7 +221,7 @@ test/                     Node test-runner coverage for parser, progression, aut
 - State persistence is in memory for the running server process only.
 - Manual wallet UI testing still requires a browser wallet configured for Hardhat localhost.
 - The Vite/Web3Modal legacy dependency stack produces a large production bundle; major upgrades were intentionally deferred.
-- The current art direction uses procedural Phaser primitives and the starter knight sprite rather than a full custom sprite pack.
+- The art direction is fully procedural (layered scenery, particles, and lighting drawn in code) plus the starter knight sprite; there is no external sprite pack.
 
 ## Security Baseline
 

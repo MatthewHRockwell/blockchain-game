@@ -7,6 +7,7 @@ import { addresses, contracts } from '../../../commons/contracts.mjs'
 import { ClaimVerifier } from '../contracts'
 import { getContract } from '../utils/contracts'
 import { IDLE, KNIGHT, MAIN_SCENE, MOVE, SIGNER } from '../utils/keys'
+import { FX_GLOW, FX_VIGNETTE, GLOWING_KINDS, drawBackdrop, ensureFxTextures } from './visuals'
 
 type AdventureState = {
   address: string
@@ -53,6 +54,10 @@ export class MainScene extends Phaser.Scene {
   claimBusy = false
   moveElapsed = 0
   lastDirectionIsLeft = false
+  playerShadow?: Phaser.GameObjects.Ellipse
+  roomBanner?: Phaser.GameObjects.Text
+  roomDecor: Array<Phaser.GameObjects.GameObject> = []
+  roomRenderKey = ''
 
   constructor() {
     super(MAIN_SCENE)
@@ -75,10 +80,14 @@ export class MainScene extends Phaser.Scene {
     if (loading) loading.style.display = 'none'
 
     this.cameras.main.setBackgroundColor('0x101715')
+    ensureFxTextures(this, WORLD_SIZE.width, WORLD_SIZE.height)
     this.graphics = this.add.graphics()
+    this.playerShadow = this.add.ellipse(this.state?.position.x || 110, (this.state?.position.y || 236) + 11, 26, 9, 0x000000, 0.35)
+      .setDepth(79)
     this.player = this.add.sprite(this.state?.position.x || 110, this.state?.position.y || 236, KNIGHT)
       .setScale(2.35)
       .setDepth(80)
+    this.add.image(WORLD_SIZE.width / 2, WORLD_SIZE.height / 2, FX_VIGNETTE).setDepth(200)
 
     this.createAnimations()
     this.createUi()
@@ -87,6 +96,8 @@ export class MainScene extends Phaser.Scene {
 
     if (this.state) {
       this.renderFromState(this.state)
+      this.cameras.main.fadeIn(500, 5, 9, 8)
+      this.showRoomBanner(this.state.roomName)
     }
 
     this.scale.on('resize', () => this.resizeLayout())
@@ -252,10 +263,66 @@ export class MainScene extends Phaser.Scene {
   }
 
   renderFromState(state: AdventureState) {
+    const previousRoom = this.state?.currentRoom
     this.state = state
     this.player?.setPosition(state.position.x, state.position.y)
-    this.renderRoom()
+    this.playerShadow?.setPosition(state.position.x, state.position.y + 11)
+
+    const room = getRoom(state.currentRoom)
+    const renderKey = [
+      room.id,
+      getVisibleObjects(room, state).map((object: any) => object.id).join(','),
+      room.exits.map((exit: any) => (exit.availableWhen ? exit.availableWhen(state) : true)).join(''),
+      state.flags.bridgeRepaired,
+      state.flags.templePuzzleSolved
+    ].join('|')
+
+    if (renderKey !== this.roomRenderKey) {
+      this.roomRenderKey = renderKey
+      this.renderRoom()
+      if (previousRoom && previousRoom !== state.currentRoom) {
+        this.cameras.main.fadeIn(350, 5, 9, 8)
+        this.showRoomBanner(state.roomName)
+      }
+    }
     this.renderUi()
+  }
+
+  showRoomBanner(name: string) {
+    if (this.roomBanner) {
+      this.tweens.killTweensOf(this.roomBanner)
+      this.roomBanner.destroy()
+    }
+    const banner = this.add.text(WORLD_SIZE.width / 2, 96, name, {
+      color: '#f6c968',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      fontSize: '26px',
+      fontStyle: 'bold',
+      stroke: '#0b100e',
+      strokeThickness: 6
+    }).setOrigin(0.5).setDepth(300).setAlpha(0)
+    this.roomBanner = banner
+
+    this.tweens.add({
+      targets: banner,
+      alpha: 1,
+      y: 84,
+      duration: 420,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        this.time.delayedCall(1400, () => {
+          this.tweens.add({
+            targets: banner,
+            alpha: 0,
+            duration: 600,
+            onComplete: () => {
+              if (this.roomBanner === banner) this.roomBanner = undefined
+              banner.destroy()
+            }
+          })
+        })
+      }
+    })
   }
 
   renderUi() {
@@ -296,22 +363,67 @@ export class MainScene extends Phaser.Scene {
     graphics.clear()
     this.labels.forEach(label => label.destroy())
     this.labels = []
+    this.clearRoomDecor()
 
     graphics.fillStyle(room.palette.ground, 1)
     graphics.fillRect(0, 0, WORLD_SIZE.width, WORLD_SIZE.height)
     graphics.fillStyle(room.palette.shade, 0.55)
     graphics.fillRect(0, 0, WORLD_SIZE.width, 54)
     graphics.fillRect(0, WORLD_SIZE.height - 46, WORLD_SIZE.width, 46)
+    drawBackdrop(graphics, room, WORLD_SIZE)
     graphics.lineStyle(2, room.palette.accent, 0.8)
     graphics.strokeRect(10, 10, WORLD_SIZE.width - 20, WORLD_SIZE.height - 20)
 
     this.drawExits(room)
     getVisibleObjects(room, this.state).forEach((object: any) => this.drawObject(object))
+    this.spawnFireflies(room)
 
     if (this.player) {
       this.player.setDepth(90)
       this.player.setPosition(this.state.position.x, this.state.position.y)
     }
+  }
+
+  clearRoomDecor() {
+    this.roomDecor.forEach(decor => {
+      this.tweens.killTweensOf(decor)
+      decor.destroy()
+    })
+    this.roomDecor = []
+  }
+
+  addObjectGlow(x: number, y: number, color: number) {
+    const glow = this.add.image(x, y, FX_GLOW)
+      .setTint(color)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.28)
+      .setScale(1.3)
+      .setDepth(74)
+    this.tweens.add({
+      targets: glow,
+      alpha: 0.5,
+      scale: 1.8,
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    })
+    this.roomDecor.push(glow)
+  }
+
+  spawnFireflies(room: any) {
+    const particles = this.add.particles(0, 0, FX_GLOW, {
+      x: { min: 30, max: WORLD_SIZE.width - 30 },
+      y: { min: 60, max: WORLD_SIZE.height - 55 },
+      scale: { start: 0.10, end: 0 },
+      alpha: { start: 0.7, end: 0 },
+      speed: { min: 4, max: 14 },
+      lifespan: { min: 2600, max: 4400 },
+      frequency: 380,
+      tint: room.palette.accent,
+      blendMode: Phaser.BlendModes.ADD
+    }).setDepth(88)
+    this.roomDecor.push(particles)
   }
 
   drawExits(room: any) {
@@ -435,6 +547,10 @@ export class MainScene extends Phaser.Scene {
       default:
         this.graphics.fillStyle(color, 1)
         this.graphics.fillCircle(x, y, 18)
+    }
+
+    if (GLOWING_KINDS.has(visual.kind)) {
+      this.addObjectGlow(x, y, color)
     }
 
     this.addWorldLabel(object.name, x, y + 34)
