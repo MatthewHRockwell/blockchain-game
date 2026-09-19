@@ -7,6 +7,7 @@ import {
   applyCommand,
   applyMovement,
   canAuthorizeReward,
+  canReissueRewardPacket,
   getInitialMessage,
   markRewardPacketIssued
 } from "../adventure/engine.js"
@@ -53,6 +54,11 @@ export default class AdventureScene extends Phaser.Scene {
 
     this.emitResult(getInitialMessage(this.adventureState))
     this.emitState(NETWORK_EVENTS.READY)
+
+    if (canReissueRewardPacket(this.adventureState)) {
+      this.issueRewardPacket("Restored session: your reward authorization has been reissued. The claim panel is ready.")
+        .catch(() => this.emitResult("The reward signer is unavailable. Start the local chain, then reconnect to receive your packet."))
+    }
   }
 
   update(time, delta) {
@@ -90,20 +96,23 @@ export default class AdventureScene extends Phaser.Scene {
 
   async authorizeReward() {
     if (!canAuthorizeReward(this.adventureState)) return
+    await this.issueRewardPacket("Reward authorization received. The claim panel is ready.", { markIssued: true })
+  }
 
+  async issueRewardPacket(message, { markIssued = false } = {}) {
     const request = this.claimManager
     const deadline = ethers.constants.MaxUint256
     const receiver = this.channel.userData.address
     const sig = await signPacket(this.wallet, request, deadline, receiver)
 
-    this.setAdventureState(markRewardPacketIssued(this.adventureState))
+    if (markIssued) this.setAdventureState(markRewardPacketIssued(this.adventureState))
     this.channel.emit(NETWORK_EVENTS.CLAIM, {
       sig,
       request,
       deadline: deadline.toString(),
       receiver
     })
-    this.emitResult("Reward authorization received. The claim panel is ready.")
+    this.emitResult(message)
     this.emitState(NETWORK_EVENTS.STATE)
   }
 

@@ -416,6 +416,15 @@ export function canAuthorizeReward(state) {
   return isCompletionEligible(state) && state.rewardAuthorized && !state.rewardPacketIssued
 }
 
+// A restored session that already had its packet issued must be able to get a
+// fresh copy: the signed packet lives only in client memory, so a reconnect or
+// server restart before the claim transaction would otherwise strand the
+// player. Re-signing the same fields yields the same authorization, and the
+// contract still enforces one-time claiming on-chain.
+export function canReissueRewardPacket(state) {
+  return isCompletionEligible(state) && state.rewardAuthorized && state.rewardPacketIssued
+}
+
 export function markRewardPacketIssued(currentState) {
   const state = cloneAdventureState(currentState)
   state.rewardPacketIssued = true

@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { applyCommand, canAuthorizeReward } from "../server/game/adventure/engine.js"
+import { applyCommand, canAuthorizeReward, canReissueRewardPacket, markRewardPacketIssued } from "../server/game/adventure/engine.js"
 import { createAdventureState, forceCompleteForTests } from "../server/game/adventure/state.js"
 import { getRoom } from "../commons/adventure/rooms.mjs"
 import { FLAG_IDS, ITEM_IDS, OBJECT_IDS, ROOM_IDS } from "../commons/adventure/schema.mjs"
@@ -103,6 +103,22 @@ test("requires full progression before artifact recovery and reward authorizatio
   assert.equal(completed.state.completed, true)
   assert.equal(completed.state.rewardAuthorized, true)
   assert.equal(canAuthorizeReward(completed.state), true)
+})
+
+test("issued reward packet is reissuable after restore but never double-authorized", () => {
+  let state = stateIn(ROOM_IDS.INNER_TEMPLE, OBJECT_IDS.ARTIFACT)
+  forceCompleteForTests(state)
+  state = applyCommand(state, "take artifact").state
+  assert.equal(canReissueRewardPacket(state), false)
+
+  const issued = markRewardPacketIssued(state)
+  assert.equal(canAuthorizeReward(issued), false)
+  assert.equal(canReissueRewardPacket(issued), true)
+
+  const incomplete = createAdventureState(ADDRESS)
+  incomplete.rewardPacketIssued = true
+  incomplete.rewardAuthorized = true
+  assert.equal(canReissueRewardPacket(incomplete), false)
 })
 
 test("anti-cheat packets cannot mutate authoritative state", () => {
