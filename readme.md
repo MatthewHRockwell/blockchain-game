@@ -190,6 +190,7 @@ npm run build --prefix client
 ```text
 commons/adventure/        Shared parser schema, command parser, room definitions
 server/auth.js            Testable local challenge/signature authorization helpers
+server/persistence.js     File-backed player state store with debounced atomic writes
 server/game/adventure/    Server-owned state and authoritative action engine
 server/game/scenes/       Headless Phaser authoritative session scene
 client/src/scenes/        Wallet connection, Geckos connection, rendered adventure UI
@@ -206,9 +207,12 @@ test/                     Node test-runner coverage for parser, progression, aut
 - Repeated actions are idempotent or rejected without duplicating inventory/rewards.
 - The blockchain reward path remains local and uses the existing Trustus verifier pattern.
 
+## State Persistence
+
+Player states survive server restarts. The server keeps authoritative state in a file-backed store (`server/persistence.js`) that loads `server/data/player-states.json` at startup, debounces atomic writes while play is in progress, and flushes on disconnect and shutdown. Set `STATE_FILE` to override the storage path. A corrupt state file is backed up to `player-states.json.corrupt` and the server starts fresh rather than crashing. Delete `server/data/` to reset all progress.
+
 ## Known Limitations
 
-- State persistence is in memory for the running server process only.
 - Manual wallet UI testing still requires a browser wallet configured for Hardhat localhost.
 - The Vite/Web3Modal legacy dependency stack produces a large production bundle; major upgrades were intentionally deferred.
 - The current art direction uses procedural Phaser primitives and the starter knight sprite rather than a full custom sprite pack.
