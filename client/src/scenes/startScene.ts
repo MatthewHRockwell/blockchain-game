@@ -1,30 +1,25 @@
 import * as Phaser from 'phaser'
 import { ethers } from 'ethers'
-import Web3Modal from 'web3modal'
 import generateTypedAuth from '../../../commons/auth.mjs'
 import { CONNECT_SCENE, SIGNER } from '../utils/keys'
 
 async function connectWallet() {
-  const hasInjectedProvider = typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined'
-  if (!hasInjectedProvider) {
+  const injected = typeof window !== 'undefined' ? (window as any).ethereum : undefined
+  if (!injected) {
     throw new Error('No injected browser wallet found. Use a local wallet connected to Hardhat chain 31337.')
   }
 
-  const web3Modal = new Web3Modal({
-    cacheProvider: false,
-    providerOptions: {
-      injected: {
-        display: {
-          name: 'Browser wallet',
-          description: 'Use a local Hardhat account on chain 31337'
-        }
-      }
-    },
-    theme: 'dark'
-  })
+  // Only injected wallets are supported, so request accounts directly rather than
+  // pulling in Web3Modal's provider-picker and its large dependency tree.
+  if (typeof injected.request === 'function') {
+    await injected.request({ method: 'eth_requestAccounts' })
+  } else if (typeof injected.enable === 'function') {
+    await injected.enable()
+  } else {
+    throw new Error('Injected wallet does not support account authorization.')
+  }
 
-  const instance = await web3Modal.connect()
-  const provider = new ethers.providers.Web3Provider(instance)
+  const provider = new ethers.providers.Web3Provider(injected)
   const network = await provider.getNetwork()
   if (network.chainId !== 31337) {
     throw new Error(`Wrong chain ${network.chainId}. Switch the wallet to localhost chain 31337.`)

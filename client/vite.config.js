@@ -24,7 +24,7 @@ const config = {
                 nodePolyFills()
             ]
         },
-        // Needed for legacy ethers/Web3Modal dependencies.
+        // Needed for legacy ethers v5 CommonJS dependencies.
         commonjsOptions: {
             transformMixedEsModules: true
         }

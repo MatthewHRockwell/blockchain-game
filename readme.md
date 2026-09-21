@@ -236,7 +236,7 @@ Player states survive server restarts. The server keeps authoritative state in a
 ## Known Limitations
 
 - Interactive play still requires a browser wallet configured for Hardhat localhost; the automated claim flow is covered by the end-to-end harness in `scripts/`.
-- The Vite/Web3Modal legacy dependency stack produces a large production bundle; major upgrades were intentionally deferred.
+- The legacy Vite 2 build still emits a single large chunk, dominated by Phaser and ethers v5; a Vite major upgrade and code splitting were intentionally deferred. Web3Modal was dropped in favour of a direct injected-provider request, since only injected wallets were ever supported, cutting the gzipped bundle by roughly a third.
 - The art direction is fully procedural (layered scenery, particles, and lighting drawn in code) plus the starter knight sprite; there is no external sprite pack.
 
 ## Security Baseline
