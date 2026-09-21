@@ -206,6 +206,18 @@ npm run e2e:screenshots
 
 It needs a local Chrome/Chromium (`CHROME_BIN` to override) and uses Hardhat development account #1 as the player.
 
+"Fresh game-server session" matters: state persistence restores completed progress, so delete `server/data/player-states.json` between runs or the harness times out waiting for the opening room.
+
+The harness introspects scene state through a `window.__LOST_TEMPLE_GAME__` hook that a normal production build strips. To exercise the built bundle rather than the dev server, build in the dedicated mode, serve it, and point the harness at it:
+
+```bash
+npm run client:build:e2e
+npm run client:preview
+CLIENT_URL=http://localhost:4173 npm run e2e:screenshots
+```
+
+`npm run client:build:e2e` is an ordinary production build with `__E2E_HOOK__` defined; only that mode exposes the hook, so a normal `npm run build` never ships it.
+
 ## Project Structure
 
 ```text
