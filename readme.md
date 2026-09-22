@@ -61,6 +61,13 @@ Reward authorization is only emitted after these server-owned flags are true:
 - `artifactRecovered`
 - `completed`
 
+Movement is simulated in fixed-size substeps against a clamped frame delta. Collision
+is otherwise only tested at a step's destination, so a long server stall could produce
+a step wider than a solid and walk the player through it; the narrowest solid in the
+world is 42px, and at 92px/s roughly a 0.7s pause was enough. Room transitions always
+re-check exit prerequisites, so this never granted progression or a reward, but it did
+break world integrity.
+
 The Solidity contracts still verify that the reward packet was signed by the trusted local server signer. Local Hardhat accounts only are required. No real private keys, seed phrases, testnet funds, mainnet funds, or external RPC credentials are needed.
 
 ## Gameplay
