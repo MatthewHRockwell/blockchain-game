@@ -8,7 +8,7 @@ const FILLER_WORDS = new Set(["the", "a", "an", "please", "some", "my"])
 const CUT_VERBS = ["cut", "clear", "chop", "slash", "hack", "cut through", "cut down"]
 const REPAIR_VERBS = ["repair", "fix", "mend", "tie", "attach", "lash", "secure", "rebuild"]
 const TAKE_VERBS = ["take", "get", "grab", "collect", "pick up", "pickup"]
-const LOOK_VERBS = ["look at", "look", "examine", "inspect", "x", "study"]
+const LOOK_VERBS = ["look at", "look", "examine", "inspect", "check", "x", "study"]
 const USE_VERBS = ["use", "press", "push", "touch", "activate"]
 const GO_VERBS = ["go", "walk", "move", "head", "travel"]
 const TALK_VERBS = ["talk to", "speak to", "talk", "speak", "ask"]
@@ -116,13 +116,20 @@ export function normalizePhrase(phrase) {
 
 export function parseCommand(rawCommand) {
   const raw = String(rawCommand || "")
+
+  // Checked before cleanInput, which strips punctuation. The original `command === "?"`
+  // branch was unreachable for exactly that reason, so "?" never actually opened help.
+  if (raw.trim() === "?") {
+    return intent(raw, { verb: "help" })
+  }
+
   const command = cleanInput(raw)
 
   if (!command) {
     return malformed(raw, "Say something expedition-adjacent first.")
   }
 
-  if (command === "help" || command === "?" || command === "commands") {
+  if (command === "help" || command === "commands") {
     return intent(raw, { verb: "help" })
   }
 

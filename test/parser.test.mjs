@@ -99,3 +99,35 @@ test("an unknown verb suggests the closest known one", () => {
   assert.equal(nonsense.intent.verb, "unknown")
   assert.equal(nonsense.intent.suggestion, undefined)
 })
+
+test("every command form the original parser accepted still works", () => {
+  // Guard against silently dropping a verb while reorganising the verb lists.
+  // "check <object>" was lost once already: it fell through to unknown and the
+  // did-you-mean helpfully suggested HACK.
+  const ORIGINAL_FORMS = [
+    ["help", "help"], ["?", "help"],
+    ["inventory", "inventory"], ["inv", "inventory"], ["i", "inventory"],
+    ["look", "look"], ["l", "look"],
+    ["look at aircraft", "look"], ["examine aircraft", "look"],
+    ["inspect aircraft", "look"], ["check aircraft", "look"],
+    ["pick up machete", "take"], ["pickup machete", "take"],
+    ["take machete", "take"], ["get machete", "take"],
+    ["grab machete", "take"], ["collect machete", "take"],
+    ["use machete on vines", "use"], ["use rope with bridge", "use"],
+    ["use star", "use"], ["press star", "use"],
+    ["push star", "use"], ["touch star", "use"],
+    ["cut vines with machete", "cut"], ["cut vines", "cut"],
+    ["read journal", "read"], ["open door", "open"],
+    ["talk to jungle", "talk"], ["speak to jungle", "talk"], ["ask jungle", "talk"],
+    ["go east", "go"], ["walk east", "go"], ["move east", "go"],
+    ["head east", "go"], ["travel east", "go"],
+    ["east", "go"], ["e", "go"], ["n", "go"]
+  ]
+
+  for (const [command, expectedVerb] of ORIGINAL_FORMS) {
+    const parsed = parseCommand(command)
+    assert.equal(parsed.ok, true, `"${command}" should parse`)
+    assert.equal(parsed.intent.verb, expectedVerb, `"${command}" should be ${expectedVerb}`)
+    assert.notEqual(parsed.intent.verb, "unknown", `"${command}" regressed to unknown`)
+  }
+})
