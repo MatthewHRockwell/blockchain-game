@@ -40,6 +40,14 @@ function result(state, message, extras = {}) {
   }
 }
 
+/**
+ * A successful inspection: LOOK, INVENTORY, HELP. These are expected to leave the
+ * world untouched, so they must not be counted as refusals.
+ */
+function informational(state, message) {
+  return result(state, message, { informational: true })
+}
+
 function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y)
 }
@@ -432,21 +440,21 @@ function handleRepair(state, intent, room) {
   return result(state, `The ${object.name} resists your improvements.`)
 }
 
-export function applyIntent(currentState, intent) {
+function resolveIntent(currentState, intent) {
   const state = cloneAdventureState(currentState)
   const room = getRoom(state.currentRoom)
 
   switch (intent.verb) {
     case "help":
-      return result(state, helpText())
+      return informational(state, helpText())
     case "inventory":
-      return result(state, inventoryText(state))
+      return informational(state, inventoryText(state))
     case "look": {
-      if (!intent.object) return result(state, roomLook(state))
+      if (!intent.object) return informational(state, roomLook(state))
       const object = resolveVisibleObject(room, state, intent.object)
-      if (object) return result(state, object.description || `You see ${object.name}.`)
+      if (object) return informational(state, object.description || `You see ${object.name}.`)
       const item = resolveItem(intent.object)
-      if (item && hasItem(state, item)) return result(state, `Your ${ITEM_NAMES[item]} is ready for questionable field decisions.`)
+      if (item && hasItem(state, item)) return informational(state, `Your ${ITEM_NAMES[item]} is ready for questionable field decisions.`)
       return result(state, missingObject(room, state, intent.object))
     }
     case "take": {
@@ -500,11 +508,11 @@ export function applyIntent(currentState, intent) {
 
 export function applyCommand(currentState, rawCommand) {
   if (typeof rawCommand !== "string") {
-    return result(cloneAdventureState(currentState), "Invalid command packet. The server only accepts typed commands.")
+    return result(cloneAdventureState(currentState), "Invalid command packet. The server only accepts typed commands.", { refused: true })
   }
 
   const parsed = parseCommand(rawCommand)
-  if (!parsed.ok) return result(cloneAdventureState(currentState), parsed.message)
+  if (!parsed.ok) return result(cloneAdventureState(currentState), parsed.message, { refused: true })
   return applyIntent(currentState, parsed.intent)
 }
 
@@ -531,3 +539,19 @@ export function getInitialMessage(state) {
   return `THE LOST TEMPLE. ${roomLook(state)} Type HELP for commands.`
 }
 
+/**
+ * Classify a command outcome so the client does not have to guess from prose.
+ * `refused` means the action neither changed the authoritative state nor was a
+ * successful inspection.
+ */
+function classifyOutcome(previousState, outcome) {
+  if (outcome.informational) return outcome
+  const before = JSON.stringify(toPublicState(previousState))
+  const after = JSON.stringify(outcome.publicState)
+  if (before !== after) return outcome
+  return { ...outcome, refused: true }
+}
+
+export function applyIntent(currentState, intent) {
+  return classifyOutcome(currentState, resolveIntent(currentState, intent))
+}

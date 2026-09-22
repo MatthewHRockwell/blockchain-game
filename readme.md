@@ -104,6 +104,27 @@ CHECK INVENTORY   INV   I   ITEMS
 An unrecognised verb suggests the closest match, so a typo like `REED JOURNAL` replies
 "Did you mean READ?" rather than a flat refusal.
 
+### Sound
+
+Every cue is synthesised in the browser with Web Audio; there are no audio files in the
+repository. Footsteps while walking, a blade swish for the vines, woody knocks for the
+bridge, a bell for the journal, glyph tones that rise in pitch as the sequence builds
+and buzz on a reset, a stone rumble for the door, an arpeggio for the artifact and the
+claim, and a short low blip when an action is refused.
+
+Which cue plays is decided from the authoritative state transition rather than by
+matching on message text (`commons/adventure/sounds.mjs`), so rewording a reply cannot
+silently drop its sound. Refusals have no state change to read, so the server
+classifies them instead: the engine marks any outcome that neither changed the world
+nor was a successful inspection (LOOK, INVENTORY, HELP), and the session scene forwards
+that as `refused`. Every failed action therefore gets the cue, not just the ones whose
+wording someone thought to enumerate.
+
+Sound can be toggled from the HUD button, and the preference persists per browser. The
+audio context stays suspended until the first interaction, per browser autoplay rules,
+and the whole layer is best-effort: a browser without Web Audio, or a headless run with
+no output device, plays nothing and the game is unaffected.
+
 ## Local Runtime
 
 Use Node `20.20.2` and npm `10.8.2`. The legacy Geckos/WebRTC path depends on `node-datachannel@0.4.3`, which did not install cleanly under Node 22 in this environment.
@@ -263,6 +284,8 @@ client/src/scenes/        Wallet connection, Geckos connection, rendered adventu
 contracts/src/            ClaimVerifier and ClaimManagerERC721 Solidity contracts
 contracts/test/           Hardhat coverage for the reward claim trust boundary
 commons/trustus.mjs       Shared EIP-712 reward-packet domain and types
+commons/adventure/sounds.mjs  Pure state-transition to sound-cue mapping
+client/src/audio.ts       Web Audio synthesis for every sound cue
 test/                     Node test-runner coverage for parser, progression, auth, rewards
 scripts/                  Headless end-to-end gameplay, claim, and screenshot harness
 .github/workflows/        CI: unit tests, client typecheck and build, contract tests
@@ -285,7 +308,8 @@ Player states survive server restarts. The server keeps authoritative state in a
 
 - Interactive play still requires a browser wallet configured for Hardhat localhost; the automated claim flow is covered by the end-to-end harness in `scripts/`.
 - The legacy Vite 2 build still emits a single large chunk, dominated by Phaser and ethers v5; a Vite major upgrade and code splitting were intentionally deferred. Web3Modal was dropped in favour of a direct injected-provider request, since only injected wallets were ever supported, cutting the gzipped bundle by roughly a third.
-- The art direction is fully procedural (layered scenery, particles, and lighting drawn in code) plus the starter knight sprite; there is no external sprite pack.
+- The art and audio are both fully procedural (layered scenery, particles, and lighting drawn in code; sound synthesised from oscillators and shaped noise) plus the starter knight sprite. There is no external sprite pack and no audio files, which keeps the repository asset-free but also keeps the palette simple.
+- There is no ambient room audio, only discrete event cues, and no music.
 - The parser is forgiving about verbs and unambiguous partial nouns, but it still has no hint system and no `EXITS`, `AGAIN`, `DROP`, `SEARCH`, or `MAP`. Ambiguous nouns are deliberately left unresolved rather than guessed, so `LOOK AT GLYPHS` with three glyphs present asks you to be specific.
 - Test coverage is deliberately concentrated on the trust boundaries: the action engine, auth, persistence, and the claim contracts. The session scene (`server/game/scenes/adventureScene.js`), the HTTP/Geckos wiring in `server/server.js`, movement collision, and the client scenes have no unit coverage; the client is exercised only by the end-to-end harness. Room data has no structural test, so a bad exit or object position would be caught by playing rather than by CI.
 
