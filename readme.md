@@ -203,8 +203,9 @@ Use a browser wallet connected to local Hardhat chain ID `31337`. Import or use 
 
 ## Tests
 
-Continuous integration runs all three of the following on every push and pull request
-(`.github/workflows/ci.yml`).
+Continuous integration runs all three of the following on every push to any branch and
+on every pull request (`.github/workflows/ci.yml`), so a feature branch is checked
+before its pull request exists.
 
 Parser, progression, anti-cheat, auth, and persistence tests. These need only
 `npm run install:server` and pass on a clean checkout; the chain-dependent claim test

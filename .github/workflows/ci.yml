@@ -1,9 +1,16 @@
 name: CI
 
+# Unfiltered on purpose. With `branches: [main]` a feature branch got no checks at all
+# until its pull request existed, which is exactly when they are most useful.
 on:
   push:
-    branches: [main]
   pull_request:
+
+# A branch that already has a pull request matches both events. Superseded runs are
+# cancelled so rapid pushes do not queue up behind each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 # Node is pinned to the 20.x line the project requires; node-datachannel (a geckos
 # dependency) does not build on Node 22.
