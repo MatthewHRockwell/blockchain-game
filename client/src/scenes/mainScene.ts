@@ -137,14 +137,24 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * geckos types every channel payload as `string | number | Object`, so a handler
+   * with a narrower parameter is rejected outright. The server is the only writer on
+   * these events and its shapes are the types below, so narrow once here rather than
+   * casting at each call site.
+   */
+  private onServerEvent<T>(event: string, handler: (payload: T) => void) {
+    this.channel?.on(event, (data) => handler(data as T))
+  }
+
   bindNetwork() {
-    this.channel?.on(NETWORK_EVENTS.UPDATE, (state: AdventureState) => this.renderFromState(state))
-    this.channel?.on(NETWORK_EVENTS.STATE, (state: AdventureState) => this.renderFromState(state))
-    this.channel?.on(NETWORK_EVENTS.RESULT, (result: { message: string, state?: AdventureState }) => {
+    this.onServerEvent<AdventureState>(NETWORK_EVENTS.UPDATE, (state) => this.renderFromState(state))
+    this.onServerEvent<AdventureState>(NETWORK_EVENTS.STATE, (state) => this.renderFromState(state))
+    this.onServerEvent<{ message: string, state?: AdventureState }>(NETWORK_EVENTS.RESULT, (result) => {
       if (result.message) this.addMessage(result.message)
       if (result.state) this.renderFromState(result.state)
     })
-    this.channel?.on(NETWORK_EVENTS.CLAIM, (payload: ClaimPayload | string) => {
+    this.onServerEvent<ClaimPayload | string>(NETWORK_EVENTS.CLAIM, (payload) => {
       this.claimPayload = typeof payload === 'string'
         ? { sig: payload, request: addresses[contracts.ARTIFACT_REWARD], deadline: ethers.constants.MaxUint256.toString(), receiver: this.state?.address || '' }
         : payload

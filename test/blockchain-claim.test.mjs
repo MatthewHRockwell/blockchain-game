@@ -4,14 +4,18 @@ import { createRequire } from "node:module"
 import { pathToFileURL } from "node:url"
 
 const require = createRequire(import.meta.url)
-const { ethers } = require("../server/node_modules/ethers")
-const verifierArtifact = require("../contracts/artifacts/src/ClaimVerifier.sol/ClaimVerifier.json")
-const managerArtifact = require("../contracts/artifacts/src/ClaimManagerERC721.sol/ClaimManagerERC721.json")
 
 const shouldRun = process.env.BLOCKCHAIN_TESTS === "1"
 const maybeTest = shouldRun ? test : test.skip
 
+// Everything below is loaded lazily inside the test body. The compiled contract
+// artifacts are gitignored and only exist after `npm run compile --prefix contracts`,
+// so requiring them at module scope made the default `npm test` fail on a clean
+// checkout even though this test is skipped there.
 maybeTest("trusted completed packet can claim and untrusted packet cannot", async () => {
+  const { ethers } = require("../server/node_modules/ethers")
+  const verifierArtifact = require("../contracts/artifacts/src/ClaimVerifier.sol/ClaimVerifier.json")
+  const managerArtifact = require("../contracts/artifacts/src/ClaimManagerERC721.sol/ClaimManagerERC721.json")
   const { contracts, addresses } = await import(pathToFileURL(`${process.cwd()}/commons/contracts.mjs`).href)
   const { signPacket } = await import(pathToFileURL(`${process.cwd()}/server/game/utils.js`).href)
   const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL || "http://127.0.0.1:8545")

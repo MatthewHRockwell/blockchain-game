@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Node is pinned to the 20.x line the project requires; node-datachannel (a geckos
+# dependency) does not build on Node 22.
+env:
+  NODE_VERSION: "20.20.2"
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install server dependencies
+        run: npm run install:server
+      # Deliberately does NOT compile contracts: `npm test` must pass on a clean
+      # checkout, with the chain-dependent claim test skipping itself.
+      - name: Run unit tests
+        run: npm test
+
+  typecheck:
+    name: Client typecheck and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install client dependencies
+        run: npm run install:client
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build --prefix client
+
+  contracts:
+    name: Contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install contract dependencies
+        run: npm run install:contracts
+      - name: Compile contracts
+        run: npm run compile --prefix contracts
+      - name: Run contract tests
+        run: npm run test:contracts

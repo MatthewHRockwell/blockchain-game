@@ -3,7 +3,8 @@
   "scripts": {
     "node": "hardhat node",
     "deploy": "hardhat deploy --network localhost",
-    "compile": "hardhat compile"
+    "compile": "hardhat compile",
+    "test": "hardhat test"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.5",
