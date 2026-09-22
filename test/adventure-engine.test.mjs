@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { applyCommand, canAuthorizeReward, canReissueRewardPacket, markRewardPacketIssued } from "../server/game/adventure/engine.js"
+import { applyCommand, applyMovement, canAuthorizeReward, canReissueRewardPacket, markRewardPacketIssued } from "../server/game/adventure/engine.js"
 import { createAdventureState, forceCompleteForTests } from "../server/game/adventure/state.js"
 import { getRoom } from "../commons/adventure/rooms.mjs"
 import { FLAG_IDS, ITEM_IDS, OBJECT_IDS, ROOM_IDS } from "../commons/adventure/schema.mjs"
@@ -290,4 +290,94 @@ test("failed actions are classified as refused, inspections are not", () => {
 test("a non-string command packet is refused rather than silently ignored", () => {
   const state = stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.MACHETE)
   assert.equal(applyCommand(state, { evil: true }).refused, true)
+})
+
+function movingState(roomId, position, flags = {}) {
+  const state = createAdventureState(ADDRESS)
+  state.currentRoom = roomId
+  state.position = { ...position }
+  state.flags = { ...state.flags, ...flags }
+  return state
+}
+
+test("a large frame delta cannot tunnel through solid geometry", () => {
+  // moveAxis only tests its destination, so before this was guarded a step wider
+  // than a solid walked straight through it. The frame delta is wall-clock time, so
+  // a GC pause or a loaded host is enough to produce one.
+  const vines = objectIn(ROOM_IDS.JUNGLE_TRAIL, OBJECT_IDS.VINES)
+  const eastEdge = vines.solid.x + vines.solid.width
+
+  for (const deltaMs of [33, 300, 700, 1200, 5000]) {
+    const moved = applyMovement(
+      movingState(ROOM_IDS.JUNGLE_TRAIL, { x: 500, y: 185 }),
+      [false, false, false, true],
+      deltaMs
+    ).state
+    assert.ok(
+      moved.position.x <= eastEdge,
+      `delta ${deltaMs}ms put the player at x=${moved.position.x}, past the vines at ${eastEdge}`
+    )
+  }
+})
+
+test("the widest solid also holds against a huge delta", () => {
+  const river = getRoom(ROOM_IDS.RIVER_CROSSING).objects.find(
+    (object) => object.solid && object.solid.width === 86
+  )
+  assert.ok(river, "expected the river solid")
+  const eastEdge = river.solid.x + river.solid.width
+
+  for (const deltaMs of [900, 2500, 10000]) {
+    const moved = applyMovement(
+      movingState(ROOM_IDS.RIVER_CROSSING, { x: 262, y: 190 }),
+      [false, false, false, true],
+      deltaMs
+    ).state
+    assert.ok(moved.position.x <= eastEdge, `delta ${deltaMs}ms crossed the river`)
+  }
+})
+
+test("normal walking speed is unchanged by the guard", () => {
+  // Substepping must not alter travel distance in open space.
+  let state = movingState(ROOM_IDS.CRASH_SITE, { x: 120, y: 300 })
+  for (let frame = 0; frame < 30; frame++) {
+    state = applyMovement(state, [false, false, false, true], 1000 / 30).state
+  }
+  const travelled = state.position.x - 120
+  assert.ok(Math.abs(travelled - 92) < 1, `one second of walking moved ${travelled}px, expected ~92`)
+})
+
+test("a repaired bridge is still passable", () => {
+  let state = movingState(
+    ROOM_IDS.RIVER_CROSSING,
+    { x: 262, y: 190 },
+    { [FLAG_IDS.BRIDGE_REPAIRED]: true }
+  )
+  for (let frame = 0; frame < 60; frame++) {
+    state = applyMovement(state, [false, false, false, true], 1000 / 30).state
+  }
+  assert.ok(state.position.x > 364, `bridge repaired but movement stopped at ${state.position.x}`)
+})
+
+test("walking into an exit area still changes room", () => {
+  let state = movingState(ROOM_IDS.CRASH_SITE, { x: 400, y: 180 })
+  let changedTo = null
+  for (let frame = 0; frame < 300 && !changedTo; frame++) {
+    const moved = applyMovement(state, [false, false, false, true], 1000 / 30)
+    state = moved.state
+    if (moved.roomChanged) changedTo = state.currentRoom
+  }
+  assert.equal(changedTo, ROOM_IDS.JUNGLE_TRAIL)
+})
+
+test("degenerate frame deltas are ignored rather than trusted", () => {
+  const start = { x: 200, y: 300 }
+  for (const deltaMs of [0, -50, Number.NaN, Number.POSITIVE_INFINITY]) {
+    const moved = applyMovement(
+      movingState(ROOM_IDS.CRASH_SITE, start),
+      [false, false, false, true],
+      deltaMs
+    ).state
+    assert.equal(moved.position.x, start.x, `delta ${deltaMs} moved the player`)
+  }
 })

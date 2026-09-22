@@ -30,6 +30,19 @@ import {
 
 const MOVE_SPEED = 92
 
+// A frame delta is wall-clock time, so a garbage-collection pause or a loaded host
+// can hand us a very large one. Unclamped, the resulting step is applied as a single
+// jump; since moveAxis only tests its destination, a step wider than a solid walks
+// straight through it. The narrowest solid in the world is 42px, and at 92px/s a
+// ~0.7s stall was enough to cross it.
+//
+// Two independent guards, because either alone is a footgun if the constants change:
+//   - clamp the delta, so a stall never becomes a catch-up teleport
+//   - advance in substeps no larger than the player radius, so collision is tested
+//     along the path rather than only at the end
+const MAX_FRAME_MS = 100
+const MAX_SUBSTEP_PX = PLAYER_RADIUS
+
 function result(state, message, extras = {}) {
   return {
     state,
@@ -128,12 +141,21 @@ export function applyMovement(currentState, movementInput, deltaMs = 1000 / 30) 
   if (right) vx += 1
 
   if (vx !== 0 || vy !== 0) {
+    const frameMs = Number.isFinite(deltaMs) ? Math.min(Math.max(deltaMs, 0), MAX_FRAME_MS) : 0
     const length = Math.hypot(vx, vy)
-    const step = (MOVE_SPEED * deltaMs) / 1000
+    const step = (MOVE_SPEED * frameMs) / 1000
     vx = (vx / length) * step
     vy = (vy / length) * step
-    let nextPosition = moveAxis(room, state, state.position, vx, 0)
-    nextPosition = moveAxis(room, state, nextPosition, 0, vy)
+
+    const substeps = Math.max(1, Math.ceil(step / MAX_SUBSTEP_PX))
+    const sx = vx / substeps
+    const sy = vy / substeps
+
+    let nextPosition = state.position
+    for (let i = 0; i < substeps; i++) {
+      nextPosition = moveAxis(room, state, nextPosition, sx, 0)
+      nextPosition = moveAxis(room, state, nextPosition, 0, sy)
+    }
     state.position = nextPosition
   }
 
