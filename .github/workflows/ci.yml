@@ -1,9 +1,22 @@
 name: CI
 
+# Unfiltered on purpose. With `branches: [main]` a feature branch got no checks at all
+# until its pull request existed, which is exactly when they are most useful.
 on:
   push:
-    branches: [main]
   pull_request:
+
+# Cancels superseded runs *within* each event stream, so rapid pushes to a branch do
+# not queue up behind each other.
+#
+# It deliberately does not merge the push and pull_request streams: on a branch with an
+# open pull request `head_ref` is the bare branch name while a push sees only `ref`
+# (refs/heads/<branch>), so the two keys differ and both runs proceed. Sharing a key
+# would halve the work but leaves a cancelled run attached to the pull request's head
+# commit, which reads like a failure. Two fast duplicate runs are the better trade here.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 # Node is pinned to the 20.x line the project requires; node-datachannel (a geckos
 # dependency) does not build on Node 22.
