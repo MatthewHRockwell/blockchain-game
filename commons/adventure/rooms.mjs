@@ -237,7 +237,7 @@ export const ROOMS = {
       {
         id: OBJECT_IDS.CAMP,
         name: "abandoned camp",
-        aliases: ["camp", "tent", "tents", "crates", "firepit", "case"],
+        aliases: ["camp", "tent", "tents", "crates", "firepit"],
         position: { x: 292, y: 198 },
         radius: 90,
         solid: { x: 220, y: 126, width: 122, height: 70 },

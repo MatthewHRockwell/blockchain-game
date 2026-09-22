@@ -138,9 +138,58 @@ function allAliases(definition) {
 }
 
 
+function singular(word) {
+  return word.length > 3 && word.endsWith("s") ? word.slice(0, -1) : word
+}
+
+/**
+ * Fall back to token overlap so "the damaged plane" or "look vines" resolve without
+ * requiring an exact alias. Only used when exactly one object matches: an ambiguous
+ * phrase stays unresolved rather than silently picking whichever came first.
+ */
+function tokenMatches(objects, normalized) {
+  const words = normalized.split(" ").filter(Boolean).map(singular)
+  if (!words.length) return []
+
+  return objects.filter((object) =>
+    allAliases(object).some((alias) =>
+      alias
+        .split(" ")
+        .filter(Boolean)
+        .map(singular)
+        .some((aliasWord) => words.includes(aliasWord))
+    )
+  )
+}
+
+function resolveByTokens(objects, normalized) {
+  const matches = tokenMatches(objects, normalized)
+  return matches.length === 1 ? matches[0] : undefined
+}
+
+function joinNames(names) {
+  if (names.length <= 1) return names.join("")
+  return `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`
+}
+
+/**
+ * Message for a noun that did not resolve. A phrase matching several things in the
+ * room is ambiguous rather than absent, so say which ones were meant.
+ */
+function missingObject(room, state, phrase) {
+  const matches = tokenMatches(getVisibleObjects(room, state), normalizePhrase(phrase))
+  if (matches.length > 1) {
+    return `Which one do you mean: ${joinNames(matches.map((object) => object.name))}?`
+  }
+  return `I don't see "${phrase}" here.`
+}
+
 function resolveVisibleObject(room, state, phrase) {
   const normalized = normalizePhrase(phrase)
-  return getVisibleObjects(room, state).find((object) => allAliases(object).includes(normalized))
+  const visible = getVisibleObjects(room, state)
+  const exact = visible.find((object) => allAliases(object).includes(normalized))
+  if (exact) return exact
+  return resolveByTokens(visible, normalized)
 }
 
 function resolveAnyRoomObject(room, phrase) {
@@ -334,8 +383,53 @@ function handleUse(state, intent, room) {
     return result(state, `You don't have the ${ITEM_NAMES[item] || item}.`)
   }
 
-  if (targetObject) return result(state, `You can't use the ${intent.object} on the ${targetObject.name}.`)
+  // "push door" used to read "You can't use the door on the stone door."
+  if (!intent.target && targetObject?.id === OBJECT_IDS.TEMPLE_DOOR) {
+    return openTempleDoor(state, targetObject)
+  }
+
+  if (intent.target && targetObject) {
+    return result(state, `You can't use the ${intent.object} on the ${targetObject.name}.`)
+  }
+  if (targetObject) return result(state, `Using the ${targetObject.name} achieves nothing on its own.`)
   return result(state, `You can't use "${intent.object}" that way.`)
+}
+
+// Objects that a player can sensibly "repair"/"fix", and the item each one needs.
+// The room objective text says "repair the bridge", so that phrasing has to work
+// even when the player does not name the rope.
+const REPAIR_REQUIREMENTS = {
+  [OBJECT_IDS.BRIDGE]: ITEM_IDS.ROPE
+}
+
+function openTempleDoor(state, object) {
+  if (!nearEnough(state, object)) return result(state, "You're too far away.")
+  if (!state.flags[FLAG_IDS.TEMPLE_PUZZLE_SOLVED]) {
+    return result(state, "The stone door will not open by enthusiasm alone. Try the glyphs.")
+  }
+  return result(state, "The stone door is already open. The way east is clear.")
+}
+
+function handleRepair(state, intent, room) {
+  const object = resolveVisibleObject(room, state, intent.object)
+  if (!object) return result(state, missingObject(room, state, intent.object))
+
+  const required = REPAIR_REQUIREMENTS[object.id]
+  if (!required) return result(state, `You can't repair the ${object.name}.`)
+
+  if (intent.item) {
+    const named = resolveItem(intent.item)
+    if (named !== required) {
+      return result(state, `The ${ITEM_NAMES[named] || intent.item} will not repair the ${object.name}.`)
+    }
+  }
+
+  if (!hasItem(state, required)) {
+    return result(state, `You don't have the ${ITEM_NAMES[required] || required}.`)
+  }
+
+  if (object.id === OBJECT_IDS.BRIDGE) return repairBridge(state, object)
+  return result(state, `The ${object.name} resists your improvements.`)
 }
 
 export function applyIntent(currentState, intent) {
@@ -353,14 +447,14 @@ export function applyIntent(currentState, intent) {
       if (object) return result(state, object.description || `You see ${object.name}.`)
       const item = resolveItem(intent.object)
       if (item && hasItem(state, item)) return result(state, `Your ${ITEM_NAMES[item]} is ready for questionable field decisions.`)
-      return result(state, `I don't see "${intent.object}" here.`)
+      return result(state, missingObject(room, state, intent.object))
     }
     case "take": {
       const object = resolveVisibleObject(room, state, intent.object)
       if (!object) {
         const hidden = resolveAnyRoomObject(room, intent.object)
         if (hidden?.itemId && hasItem(state, hidden.itemId)) return result(state, `You already have the ${ITEM_NAMES[hidden.itemId] || hidden.name}.`)
-        return result(state, `I don't see "${intent.object}" here.`)
+        return result(state, missingObject(room, state, intent.object))
       }
       if (object.id === OBJECT_IDS.ARTIFACT) return recoverArtifact(state, object)
       return takeObject(state, object)
@@ -369,23 +463,19 @@ export function applyIntent(currentState, intent) {
       const item = intent.item ? resolveItem(intent.item) : ITEM_IDS.MACHETE
       const object = resolveVisibleObject(room, state, intent.object)
       if (item !== ITEM_IDS.MACHETE) return result(state, `Cutting with ${intent.item || "that"} is bold, but not useful.`)
-      if (!object) return result(state, `I don't see "${intent.object}" here.`)
+      if (!object) return result(state, missingObject(room, state, intent.object))
       if (object.id === OBJECT_IDS.VINES) return cutVines(state, object)
       return result(state, `Cutting the ${object.name} would not improve this expedition.`)
     }
     case "read": {
       const object = resolveVisibleObject(room, state, intent.object)
-      if (!object) return result(state, `I don't see "${intent.object}" here.`)
+      if (!object) return result(state, missingObject(room, state, intent.object))
       return readJournal(state, object)
     }
     case "open": {
       const object = resolveVisibleObject(room, state, intent.object)
-      if (!object) return result(state, `I don't see "${intent.object}" here.`)
-      if (object.id === OBJECT_IDS.TEMPLE_DOOR) {
-        if (!nearEnough(state, object)) return result(state, "You're too far away.")
-        if (!state.flags[FLAG_IDS.TEMPLE_PUZZLE_SOLVED]) return result(state, "The stone door will not open by enthusiasm alone. Try the glyphs.")
-        return result(state, "The stone door is already open. The way east is clear.")
-      }
+      if (!object) return result(state, missingObject(room, state, intent.object))
+      if (object.id === OBJECT_IDS.TEMPLE_DOOR) return openTempleDoor(state, object)
       return result(state, `Opening the ${object.name} reveals mostly air and disappointment.`)
     }
     case "talk": {
@@ -393,10 +483,16 @@ export function applyIntent(currentState, intent) {
     }
     case "use":
       return handleUse(state, intent, room)
+    case "repair":
+      return handleRepair(state, intent, room)
     case "go":
       return goDirection(state, intent.direction)
-    case "unknown":
+    case "unknown": {
+      if (intent.suggestion) {
+        return result(state, `I don't understand "${intent.text}". Did you mean ${intent.suggestion.toUpperCase()}? Try HELP for the full list.`)
+      }
       return result(state, `I don't understand "${intent.text}". Try HELP if the jungle has started winning.`)
+    }
     default:
       return result(state, "That is not a valid expedition action.")
   }
