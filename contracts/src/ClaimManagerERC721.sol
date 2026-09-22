@@ -2,6 +2,7 @@
 pragma solidity 0.8.13;
 
 import "solmate/src/tokens/ERC721.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "./ClaimManager.sol";
 
 ///@title ClaimManagerERC721
@@ -40,7 +41,10 @@ contract ClaimManagerERC721 is ERC721, ClaimManager {
     {
         require(_ownerOf[id] != address(0), "NOT MINTED");
 
-        return string(abi.encodePacked(_baseURI, id));
+        // Strings.toString, not abi.encodePacked: packing a uint256 appends its 32
+        // raw bytes, so tokenURI(0) used to return the baseURI followed by 32 NUL
+        // bytes instead of "0".
+        return string(abi.encodePacked(_baseURI, Strings.toString(id)));
     }
 
     ///-------------------------------------------------------

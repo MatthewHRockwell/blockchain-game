@@ -1,20 +1,14 @@
 import { contracts, addresses } from "../../commons/contracts.mjs"
+import { PACKET_TYPES, buildPacketDomain } from "../../commons/trustus.mjs"
+
+/** Chain id of the local Hardhat network the reward contracts are deployed to. */
+export const LOCAL_CHAIN_ID = 31337
 
 export const signPacket = async (wallet, request, deadline, receiver) => {
-    const domain = {
-        name: "BlockchainGame",
-        version: "1",
-        chainId: 31337,
+    const domain = buildPacketDomain({
+        chainId: LOCAL_CHAIN_ID,
         verifyingContract: addresses[contracts.CLAIM_VERIFIER]
-    }
-
-    const types = {
-        VerifyPacket: [
-            { name: "request", type: "address" },
-            { name: "deadline", type: "uint256" },
-            { name: "receiver", type: "address" }
-        ]
-    }
+    })
 
     const value = {
         request,
@@ -22,6 +16,6 @@ export const signPacket = async (wallet, request, deadline, receiver) => {
         receiver
     }
 
-    const sig = await wallet._signTypedData(domain, types, value)
+    const sig = await wallet._signTypedData(domain, PACKET_TYPES, value)
     return sig
 }

@@ -161,22 +161,41 @@ Use a browser wallet connected to local Hardhat chain ID `31337`. Import or use 
 
 ## Tests
 
-Run parser, progression, anti-cheat, and auth tests:
+Continuous integration runs all three of the following on every push and pull request
+(`.github/workflows/ci.yml`).
+
+Parser, progression, anti-cheat, auth, and persistence tests. These need only
+`npm run install:server` and pass on a clean checkout; the chain-dependent claim test
+skips itself:
 
 ```bash
 npm test
 ```
 
-Run the local blockchain reward integration test after Hardhat is running and contracts are deployed:
-
-```bash
-npm run test:blockchain
-```
-
-Compile contracts:
+Contract tests for the reward claim trust boundary — the claim-verifier-only gate,
+receiver binding, the claim-manager registry, replay protection, packet expiry and
+request mismatch, and the owner-only setters that hold the trust root:
 
 ```bash
 npm run compile --prefix contracts
+npm run test:contracts
+```
+
+These sign their packets with the same EIP-712 definition the server uses
+(`commons/trustus.mjs`), so a drift between that and `Trustus.sol` fails here rather
+than silently reverting every real claim.
+
+Client typecheck. `vite build` does not typecheck, so this is a separate step:
+
+```bash
+npm run typecheck
+```
+
+Run the local blockchain reward integration test against a live chain, after Hardhat is
+running and contracts are deployed:
+
+```bash
+npm run test:blockchain
 ```
 
 Build the production client bundle:
@@ -228,8 +247,11 @@ server/game/adventure/    Server-owned state and authoritative action engine
 server/game/scenes/       Headless Phaser authoritative session scene
 client/src/scenes/        Wallet connection, Geckos connection, rendered adventure UI
 contracts/src/            ClaimVerifier and ClaimManagerERC721 Solidity contracts
+contracts/test/           Hardhat coverage for the reward claim trust boundary
+commons/trustus.mjs       Shared EIP-712 reward-packet domain and types
 test/                     Node test-runner coverage for parser, progression, auth, rewards
 scripts/                  Headless end-to-end gameplay, claim, and screenshot harness
+.github/workflows/        CI: unit tests, client typecheck and build, contract tests
 ```
 
 ## Design Decisions
@@ -250,6 +272,7 @@ Player states survive server restarts. The server keeps authoritative state in a
 - Interactive play still requires a browser wallet configured for Hardhat localhost; the automated claim flow is covered by the end-to-end harness in `scripts/`.
 - The legacy Vite 2 build still emits a single large chunk, dominated by Phaser and ethers v5; a Vite major upgrade and code splitting were intentionally deferred. Web3Modal was dropped in favour of a direct injected-provider request, since only injected wallets were ever supported, cutting the gzipped bundle by roughly a third.
 - The art direction is fully procedural (layered scenery, particles, and lighting drawn in code) plus the starter knight sprite; there is no external sprite pack.
+- Test coverage is deliberately concentrated on the trust boundaries: the action engine, auth, persistence, and the claim contracts. The session scene (`server/game/scenes/adventureScene.js`), the HTTP/Geckos wiring in `server/server.js`, movement collision, and the client scenes have no unit coverage; the client is exercised only by the end-to-end harness. Room data has no structural test, so a bad exit or object position would be caught by playing rather than by CI.
 
 ## Security Baseline
 

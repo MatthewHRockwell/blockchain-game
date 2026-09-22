@@ -1,2 +1,0 @@
-@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
-solmate/=node_modules/solmate/
