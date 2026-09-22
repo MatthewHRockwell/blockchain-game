@@ -187,3 +187,73 @@ test("server-authorized room exits require position and prerequisites", () => {
   assert.equal(bypass.state.currentRoom, ROOM_IDS.TEMPLE_ENTRANCE)
   assert.match(bypass.message, /door remains sealed/i)
 })
+
+test("repair bridge works without naming the rope", () => {
+  const withRope = stateIn(ROOM_IDS.RIVER_CROSSING, OBJECT_IDS.BRIDGE)
+  withRope.inventory = [ITEM_IDS.ROPE]
+  const repaired = applyCommand(withRope, "repair the bridge")
+  assert.equal(repaired.state.flags[FLAG_IDS.BRIDGE_REPAIRED], true)
+})
+
+test("repair bridge requires the rope and rejects the wrong item", () => {
+  const empty = stateIn(ROOM_IDS.RIVER_CROSSING, OBJECT_IDS.BRIDGE)
+  const noRope = applyCommand(empty, "fix bridge")
+  assert.equal(noRope.state.flags[FLAG_IDS.BRIDGE_REPAIRED], false)
+  assert.match(noRope.message, /don't have the/i)
+
+  const wrongItem = stateIn(ROOM_IDS.RIVER_CROSSING, OBJECT_IDS.BRIDGE)
+  wrongItem.inventory = [ITEM_IDS.ROPE, ITEM_IDS.MACHETE]
+  const rejected = applyCommand(wrongItem, "repair bridge with machete")
+  assert.equal(rejected.state.flags[FLAG_IDS.BRIDGE_REPAIRED], false)
+  assert.match(rejected.message, /will not repair/i)
+})
+
+test("clear vines behaves like cutting them", () => {
+  const armed = stateIn(ROOM_IDS.JUNGLE_TRAIL, OBJECT_IDS.VINES)
+  armed.inventory = [ITEM_IDS.MACHETE]
+  const cleared = applyCommand(armed, "clear the vines")
+  assert.equal(cleared.state.flags[FLAG_IDS.VINES_CUT], true)
+
+  const bare = stateIn(ROOM_IDS.JUNGLE_TRAIL, OBJECT_IDS.VINES)
+  const failed = applyCommand(bare, "chop vines")
+  assert.equal(failed.state.flags[FLAG_IDS.VINES_CUT], false)
+})
+
+test("nothing but the bridge claims to be repairable", () => {
+  const atVines = stateIn(ROOM_IDS.JUNGLE_TRAIL, OBJECT_IDS.VINES)
+  atVines.inventory = [ITEM_IDS.MACHETE]
+  const refused = applyCommand(atVines, "repair vines")
+  assert.match(refused.message, /can.t repair the/i)
+})
+
+test("read case resolves the journal rather than the camp", () => {
+  const atJournal = stateIn(ROOM_IDS.ABANDONED_CAMP, OBJECT_IDS.JOURNAL)
+  const read = applyCommand(atJournal, "read case")
+  assert.equal(read.state.flags[FLAG_IDS.JOURNAL_READ], true)
+})
+
+test("a partial noun phrase resolves when it is unambiguous", () => {
+  const atAircraft = stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.AIRCRAFT)
+  const looked = applyCommand(atAircraft, "look at the damaged plane")
+  assert.match(looked.message, /aviation/i)
+})
+
+test("pushing the temple door explains itself instead of producing broken grammar", () => {
+  const atDoor = stateIn(ROOM_IDS.TEMPLE_ENTRANCE, OBJECT_IDS.TEMPLE_DOOR)
+  const pushed = applyCommand(atDoor, "push door")
+  assert.doesNotMatch(pushed.message, /use the door on the/i)
+  assert.match(pushed.message, /glyphs/i)
+})
+
+test("an unrecognised verb suggests a correction", () => {
+  const state = stateIn(ROOM_IDS.ABANDONED_CAMP, OBJECT_IDS.JOURNAL)
+  const typo = applyCommand(state, "reed journal")
+  assert.match(typo.message, /did you mean READ/i)
+})
+
+test("an ambiguous noun asks which one rather than denying it exists", () => {
+  const atDoor = stateIn(ROOM_IDS.TEMPLE_ENTRANCE, OBJECT_IDS.TEMPLE_DOOR)
+  const asked = applyCommand(atDoor, "look at glyphs")
+  assert.match(asked.message, /which one do you mean/i)
+  assert.doesNotMatch(asked.message, /don't see/i)
+})

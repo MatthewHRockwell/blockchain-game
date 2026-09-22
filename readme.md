@@ -90,6 +90,20 @@ HELP
 GO EAST
 ```
 
+The parser accepts the same verbs the room objectives use, so `CLEAR VINES` and
+`REPAIR BRIDGE` work as well as the `USE ... ON ...` forms, and the required item is
+inferred when you do not name it. Other accepted phrasings:
+
+```text
+CUT / CLEAR / CHOP / SLASH / HACK <thing>     (with the machete)
+REPAIR / FIX / MEND / TIE / LASH <thing>      (with the rope)
+LOOK <thing>   X <thing>   EXAMINE <thing>    (the "AT" is optional)
+CHECK INVENTORY   INV   I   ITEMS
+```
+
+An unrecognised verb suggests the closest match, so a typo like `REED JOURNAL` replies
+"Did you mean READ?" rather than a flat refusal.
+
 ## Local Runtime
 
 Use Node `20.20.2` and npm `10.8.2`. The legacy Geckos/WebRTC path depends on `node-datachannel@0.4.3`, which did not install cleanly under Node 22 in this environment.
@@ -272,6 +286,7 @@ Player states survive server restarts. The server keeps authoritative state in a
 - Interactive play still requires a browser wallet configured for Hardhat localhost; the automated claim flow is covered by the end-to-end harness in `scripts/`.
 - The legacy Vite 2 build still emits a single large chunk, dominated by Phaser and ethers v5; a Vite major upgrade and code splitting were intentionally deferred. Web3Modal was dropped in favour of a direct injected-provider request, since only injected wallets were ever supported, cutting the gzipped bundle by roughly a third.
 - The art direction is fully procedural (layered scenery, particles, and lighting drawn in code) plus the starter knight sprite; there is no external sprite pack.
+- The parser is forgiving about verbs and unambiguous partial nouns, but it still has no hint system and no `EXITS`, `AGAIN`, `DROP`, `SEARCH`, or `MAP`. Ambiguous nouns are deliberately left unresolved rather than guessed, so `LOOK AT GLYPHS` with three glyphs present asks you to be specific.
 - Test coverage is deliberately concentrated on the trust boundaries: the action engine, auth, persistence, and the claim contracts. The session scene (`server/game/scenes/adventureScene.js`), the HTTP/Geckos wiring in `server/server.js`, movement collision, and the client scenes have no unit coverage; the client is exercised only by the end-to-end harness. Room data has no structural test, so a bad exit or object position would be caught by playing rather than by CI.
 
 ## Security Baseline
