@@ -6,8 +6,14 @@ on:
   push:
   pull_request:
 
-# A branch that already has a pull request matches both events. Superseded runs are
-# cancelled so rapid pushes do not queue up behind each other.
+# Cancels superseded runs *within* each event stream, so rapid pushes to a branch do
+# not queue up behind each other.
+#
+# It deliberately does not merge the push and pull_request streams: on a branch with an
+# open pull request `head_ref` is the bare branch name while a push sees only `ref`
+# (refs/heads/<branch>), so the two keys differ and both runs proceed. Sharing a key
+# would halve the work but leaves a cancelled run attached to the pull request's head
+# commit, which reads like a failure. Two fast duplicate runs are the better trade here.
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
