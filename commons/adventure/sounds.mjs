@@ -4,8 +4,12 @@
 // from the state model. The client owns synthesis; this module only decides.
 //
 // Sounds are chosen from the authoritative state transition rather than by matching
-// on prose, so a reworded message cannot silently lose its sound effect. The one
-// exception is the refusal cue, which by definition has no state change to read.
+// on prose, so a reworded message cannot silently lose its sound effect.
+//
+// Refusals have no state change to read, so the server classifies them: the engine
+// marks any outcome that neither changed the world nor was a successful inspection,
+// and the session scene forwards that as `refused`. The prose patterns below are only
+// a fallback for a payload that predates the flag.
 
 import { CLUE_IDS, FLAG_IDS } from "./schema.mjs"
 
@@ -25,9 +29,10 @@ export const SOUND_IDS = {
 }
 
 /**
- * Messages that mean "that didn't work". Deliberately a short, explicit list: a
- * message that is merely informational (a room description, an inventory listing)
- * must not buzz at the player.
+ * Fallback for payloads without the server's `refused` flag. Deliberately a short,
+ * explicit list: a message that is merely informational (a room description, an
+ * inventory listing) must not buzz at the player. Prefer the flag — this list cannot
+ * keep up with every failure wording in the engine.
  */
 const REFUSAL_PATTERNS = [
   /too far away/i,
@@ -70,9 +75,11 @@ function count(value) {
  * @param {object|undefined} params.previous state before the command
  * @param {object|undefined} params.next state after the command
  * @param {string|undefined} params.message the server's reply
+ * @param {boolean|undefined} params.refused server's own classification, preferred
+ *   over the message patterns when present
  * @returns {{ id: string, step?: number } | null}
  */
-export function soundForResult({ previous, next, message } = {}) {
+export function soundForResult({ previous, next, message, refused } = {}) {
   if (next) {
     // Most specific milestone first: recovering the artifact ends the expedition,
     // so it should not be masked by the inventory pickup that accompanies it.
@@ -112,6 +119,10 @@ export function soundForResult({ previous, next, message } = {}) {
     }
   }
 
+  // Trust the server's classification when it sent one; fall back to prose only when
+  // the flag is absent entirely.
+  if (refused === true) return { id: SOUND_IDS.REFUSED }
+  if (refused === false) return null
   if (isRefusal(message)) return { id: SOUND_IDS.REFUSED }
   return null
 }

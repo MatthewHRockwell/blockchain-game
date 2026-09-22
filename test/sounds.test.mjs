@@ -135,3 +135,25 @@ test("missing or empty input is silent rather than throwing", () => {
   assert.equal(soundForResult({ message: "" }), null)
   assert.equal(isRefusal(undefined), false)
 })
+
+test("the server's refused flag wins over the message patterns", () => {
+  const unchanged = stateWith()
+
+  // A failure whose wording is in no pattern list still buzzes.
+  const flagged = soundForResult({
+    previous: unchanged,
+    next: unchanged,
+    message: "You cannot take the damaged aircraft. It has chosen a more rooted lifestyle.",
+    refused: true
+  })
+  assert.equal(flagged?.id, SOUND_IDS.REFUSED)
+
+  // And an inspection stays silent even if its prose trips a pattern.
+  const notRefused = soundForResult({
+    previous: unchanged,
+    next: unchanged,
+    message: "You don't see anything already worth noting.",
+    refused: false
+  })
+  assert.equal(notRefused, null)
+})

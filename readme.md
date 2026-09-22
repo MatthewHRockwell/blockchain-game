@@ -114,8 +114,11 @@ claim, and a short low blip when an action is refused.
 
 Which cue plays is decided from the authoritative state transition rather than by
 matching on message text (`commons/adventure/sounds.mjs`), so rewording a reply cannot
-silently drop its sound. A refusal is the one exception, since it has no state change
-to read.
+silently drop its sound. Refusals have no state change to read, so the server
+classifies them instead: the engine marks any outcome that neither changed the world
+nor was a successful inspection (LOOK, INVENTORY, HELP), and the session scene forwards
+that as `refused`. Every failed action therefore gets the cue, not just the ones whose
+wording someone thought to enumerate.
 
 Sound can be toggled from the HUD button, and the preference persists per browser. The
 audio context stays suspended until the first interaction, per browser autoplay rules,

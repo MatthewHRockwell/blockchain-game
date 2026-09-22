@@ -74,19 +74,21 @@ export default class AdventureScene extends Phaser.Scene {
 
   async handleCommand(command) {
     if (typeof command !== "string") {
-      this.emitResult("Invalid command packet. Nice try, but the jungle only accepts words.")
+      this.emitResult("Invalid command packet. Nice try, but the jungle only accepts words.", { refused: true })
       return
     }
 
     const trimmed = command.trim()
     if (trimmed.length > MAX_COMMAND_LENGTH) {
-      this.emitResult("That command is longer than the expedition charter.")
+      this.emitResult("That command is longer than the expedition charter.", { refused: true })
       return
     }
 
     const commandResult = applyCommand(this.adventureState, trimmed)
     this.setAdventureState(commandResult.state)
-    if (commandResult.message) this.emitResult(commandResult.message)
+    if (commandResult.message) {
+      this.emitResult(commandResult.message, { refused: Boolean(commandResult.refused) })
+    }
     this.emitState(NETWORK_EVENTS.STATE)
 
     if (commandResult.rewardAuthorized) {
@@ -127,9 +129,12 @@ export default class AdventureScene extends Phaser.Scene {
     }
   }
 
-  emitResult(message) {
+  // `refused` is derived by the engine and forwarded so the client can pick a sound
+  // without pattern-matching on the message text.
+  emitResult(message, { refused = false } = {}) {
     this.channel.emit(NETWORK_EVENTS.RESULT, {
       message,
+      refused,
       state: toPublicState(this.adventureState)
     })
   }

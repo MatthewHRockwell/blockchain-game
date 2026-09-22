@@ -257,3 +257,37 @@ test("an ambiguous noun asks which one rather than denying it exists", () => {
   assert.match(asked.message, /which one do you mean/i)
   assert.doesNotMatch(asked.message, /don't see/i)
 })
+
+test("failed actions are classified as refused, inspections are not", () => {
+  // The client picks the refusal sound from this flag rather than pattern-matching
+  // the message, so every failed action must carry it — not just the ones whose
+  // wording someone remembered to list.
+  const refusedCases = [
+    [stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.AIRCRAFT), "take aircraft"],
+    [stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.MACHETE), "go north"],
+    [stateIn(ROOM_IDS.ABANDONED_CAMP, OBJECT_IDS.CAMP), "open camp"],
+    [stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.MACHETE), "talk to jungle"],
+    [stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.MACHETE), "xyzzy"],
+    [stateIn(ROOM_IDS.RIVER_CROSSING, OBJECT_IDS.BRIDGE), "repair bridge"],
+    [createAdventureState(ADDRESS), "take machete"]
+  ]
+  for (const [state, command] of refusedCases) {
+    assert.equal(applyCommand(state, command).refused, true, command)
+  }
+
+  const quietCases = [
+    [stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.MACHETE), "look"],
+    [stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.AIRCRAFT), "look at aircraft"],
+    [stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.MACHETE), "inventory"],
+    [stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.MACHETE), "help"],
+    [stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.MACHETE), "take machete"]
+  ]
+  for (const [state, command] of quietCases) {
+    assert.notEqual(applyCommand(state, command).refused, true, command)
+  }
+})
+
+test("a non-string command packet is refused rather than silently ignored", () => {
+  const state = stateIn(ROOM_IDS.CRASH_SITE, OBJECT_IDS.MACHETE)
+  assert.equal(applyCommand(state, { evil: true }).refused, true)
+})

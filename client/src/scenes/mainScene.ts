@@ -173,12 +173,12 @@ export class MainScene extends Phaser.Scene {
   bindNetwork() {
     this.onServerEvent<AdventureState>(NETWORK_EVENTS.UPDATE, (state) => this.renderFromState(state))
     this.onServerEvent<AdventureState>(NETWORK_EVENTS.STATE, (state) => this.renderFromState(state))
-    this.onServerEvent<{ message: string, state?: AdventureState }>(NETWORK_EVENTS.RESULT, (result) => {
+    this.onServerEvent<{ message: string, refused?: boolean, state?: AdventureState }>(NETWORK_EVENTS.RESULT, (result) => {
       if (result.message) this.addMessage(result.message)
       if (result.state) {
-        this.renderFromState(result.state, result.message)
+        this.renderFromState(result.state, result.message, result.refused)
       } else if (result.message) {
-        this.sound_?.play(soundForResult({ message: result.message }))
+        this.sound_?.play(soundForResult({ message: result.message, refused: result.refused }))
       }
     })
     this.onServerEvent<ClaimPayload | string>(NETWORK_EVENTS.CLAIM, (payload) => {
@@ -326,12 +326,12 @@ export class MainScene extends Phaser.Scene {
     this.logPanel.scrollTop = this.logPanel.scrollHeight
   }
 
-  renderFromState(state: AdventureState, message?: string) {
+  renderFromState(state: AdventureState, message?: string, refused?: boolean) {
     const previous = this.state
     const previousRoom = previous?.currentRoom
     // Decided from the authoritative state transition, so rewording a reply cannot
     // silently drop its sound. A refusal has no transition, hence the message.
-    this.sound_?.play(soundForResult({ previous, next: state, message }))
+    this.sound_?.play(soundForResult({ previous, next: state, message, refused }))
     this.state = state
     this.player?.setPosition(state.position.x, state.position.y)
     this.playerShadow?.setPosition(state.position.x, state.position.y + 11)
