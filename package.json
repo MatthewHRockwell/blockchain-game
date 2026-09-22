@@ -12,6 +12,8 @@
     "e2e:screenshots": "node scripts/e2e-screenshots.mjs",
     "server": "npm run server --prefix server",
     "client": "npm run dev --prefix client",
+    "client:build:e2e": "npm run build:e2e --prefix client",
+    "client:preview": "npm run preview --prefix client",
     "node": "npm run node --prefix contracts",
     "deploy": "npm run deploy --prefix contracts",
     "test": "node --test test/*.test.mjs",

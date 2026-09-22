@@ -15,6 +15,15 @@
 //
 // Then: npm run e2e:screenshots
 //
+// The harness reads the window.__LOST_TEMPLE_GAME__ hook, which a normal production
+// build strips. To run against built output instead of the dev server, build with
+// `npm run build:e2e --prefix client`, serve it (`npm run preview --prefix client`),
+// and point the harness at it with CLIENT_URL.
+//
+// Each run needs a fresh session for the player address: the server restores
+// persisted progress, so delete server/data/player-states.json between runs or the
+// harness will time out waiting for the opening room.
+//
 // Environment overrides: RPC_URL, CLIENT_URL, CHROME_BIN, PLAYER_KEY.
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'

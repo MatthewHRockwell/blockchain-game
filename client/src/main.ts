@@ -23,7 +23,11 @@ try {
     scene: [StartScene, ConnectScene, MainScene]
   })
 
-  if (import.meta.env.DEV) {
+  // The end-to-end harness reads this hook to introspect scene state. It is always
+  // available in dev, and `vite build --mode e2e` opts a production bundle in so the
+  // harness can run against the built output too. __E2E_HOOK__ is substituted at
+  // build time, so in a normal build this whole branch is removed.
+  if (import.meta.env.DEV || __E2E_HOOK__) {
     ;(window as Window & { __LOST_TEMPLE_GAME__?: Phaser.Game }).__LOST_TEMPLE_GAME__ = game
   }
 } catch (error) {
