@@ -8,6 +8,8 @@ import { ClaimVerifier } from '../contracts'
 import { getContract } from '../utils/contracts'
 import { IDLE, KNIGHT, MAIN_SCENE, MOVE, SIGNER } from '../utils/keys'
 import { FX_GLOW, FX_VIGNETTE, GLOWING_KINDS, drawBackdrop, ensureFxTextures } from './visuals'
+import { SOUND_IDS, soundForResult } from '../../../commons/adventure/sounds.mjs'
+import { SoundEngine } from '../audio'
 
 type AdventureState = {
   address: string
@@ -56,6 +58,9 @@ export class MainScene extends Phaser.Scene {
   lastDirectionIsLeft = false
   playerShadow?: Phaser.GameObjects.Ellipse
   roomBanner?: Phaser.GameObjects.Text
+  sound_?: SoundEngine
+  muteButton?: HTMLButtonElement
+  footstepElapsed = 0
   roomDecor: Array<Phaser.GameObjects.GameObject> = []
   roomRenderKey = ''
 
@@ -90,6 +95,7 @@ export class MainScene extends Phaser.Scene {
     this.add.image(WORLD_SIZE.width / 2, WORLD_SIZE.height / 2, FX_VIGNETTE).setDepth(200)
 
     this.createAnimations()
+    this.sound_ = new SoundEngine()
     this.createUi()
     this.bindNetwork()
     this.resizeLayout()
@@ -114,6 +120,23 @@ export class MainScene extends Phaser.Scene {
     if (this.moveElapsed >= 33) {
       this.channel?.emit(NETWORK_EVENTS.MOVE, movement)
       this.moveElapsed = 0
+    }
+
+    this.updateFootsteps(movement, delta)
+  }
+
+  /** Paces footsteps off wall-clock time so the rate does not follow the frame rate. */
+  updateFootsteps(movement: boolean[], delta: number) {
+    const walking = movement.some(Boolean)
+    if (!walking) {
+      this.footstepElapsed = 0
+      return
+    }
+
+    this.footstepElapsed += delta
+    if (this.footstepElapsed >= 290) {
+      this.footstepElapsed = 0
+      this.sound_?.play({ id: SOUND_IDS.FOOTSTEP })
     }
   }
 
@@ -152,7 +175,11 @@ export class MainScene extends Phaser.Scene {
     this.onServerEvent<AdventureState>(NETWORK_EVENTS.STATE, (state) => this.renderFromState(state))
     this.onServerEvent<{ message: string, state?: AdventureState }>(NETWORK_EVENTS.RESULT, (result) => {
       if (result.message) this.addMessage(result.message)
-      if (result.state) this.renderFromState(result.state)
+      if (result.state) {
+        this.renderFromState(result.state, result.message)
+      } else if (result.message) {
+        this.sound_?.play(soundForResult({ message: result.message }))
+      }
     })
     this.onServerEvent<ClaimPayload | string>(NETWORK_EVENTS.CLAIM, (payload) => {
       this.claimPayload = typeof payload === 'string'
@@ -178,7 +205,10 @@ export class MainScene extends Phaser.Scene {
             <div class="game-title">The Lost Temple</div>
             <div class="room-name"></div>
           </div>
-          <div class="wallet-state"></div>
+          <div class="title-row-controls">
+            <button class="mute-button" type="button" aria-pressed="false" title="Toggle sound"></button>
+            <div class="wallet-state"></div>
+          </div>
         </div>
         <div class="message-log" aria-live="polite"></div>
         <form class="command-form">
@@ -227,6 +257,30 @@ export class MainScene extends Phaser.Scene {
     })
     this.commandInput.addEventListener('keydown', (event) => event.stopPropagation())
     this.claimButton.addEventListener('click', () => this.claimReward())
+
+    this.muteButton = root.querySelector('.mute-button') as HTMLButtonElement
+    this.muteButton.addEventListener('click', () => {
+      this.sound_?.toggleMuted()
+      this.sound_?.resume()
+      this.renderMuteButton()
+    })
+    this.renderMuteButton()
+
+    // An AudioContext stays suspended until the player interacts, so resume on the
+    // first gesture of any kind rather than guessing which one comes first.
+    const resume = () => this.sound_?.resume()
+    root.addEventListener('pointerdown', resume)
+    root.addEventListener('keydown', resume)
+    this.game.canvas?.addEventListener('pointerdown', resume)
+    window.addEventListener('keydown', resume, { once: false })
+  }
+
+  renderMuteButton() {
+    if (!this.muteButton) return
+    const muted = this.sound_?.isMuted() ?? false
+    this.muteButton.textContent = muted ? 'Sound off' : 'Sound on'
+    this.muteButton.setAttribute('aria-pressed', muted ? 'true' : 'false')
+    this.muteButton.classList.toggle('muted', muted)
   }
 
   destroyUi() {
@@ -272,8 +326,12 @@ export class MainScene extends Phaser.Scene {
     this.logPanel.scrollTop = this.logPanel.scrollHeight
   }
 
-  renderFromState(state: AdventureState) {
-    const previousRoom = this.state?.currentRoom
+  renderFromState(state: AdventureState, message?: string) {
+    const previous = this.state
+    const previousRoom = previous?.currentRoom
+    // Decided from the authoritative state transition, so rewording a reply cannot
+    // silently drop its sound. A refusal has no transition, hence the message.
+    this.sound_?.play(soundForResult({ previous, next: state, message }))
     this.state = state
     this.player?.setPosition(state.position.x, state.position.y)
     this.playerShadow?.setPosition(state.position.x, state.position.y + 11)
@@ -627,9 +685,11 @@ export class MainScene extends Phaser.Scene {
       await tx.wait()
       this.claimed = true
       this.addMessage('NFT claimed on the local Hardhat chain.')
+      this.sound_?.play({ id: SOUND_IDS.CLAIMED })
     } catch (error: any) {
       console.error(error)
       this.addMessage(error?.reason || error?.message || 'Claim failed.')
+      this.sound_?.play({ id: SOUND_IDS.REFUSED })
     } finally {
       this.claimBusy = false
       this.renderUi()
