@@ -73,18 +73,22 @@ app.post("/challenge", (req, res) => {
     //get address
     const address = typeof req.body === 'string' ? req.body.trim() : ''
 
-    // createChallenge validates the address and bounds the pending map; a null here
-    // means the body was not an address at all.
-    const secret = createChallenge(authRequest, address)
-    if (!secret) {
-        res.status(400).setHeader('Content-Type', 'text/plain')
-        res.send('expected a wallet address')
+    // createChallenge validates the address and bounds the pending map. At capacity it
+    // refuses this request rather than evicting somebody else's live challenge.
+    const issued = createChallenge(authRequest, address)
+    if (!issued.ok) {
+        const status = issued.reason === 'at-capacity' ? 503 : 400
+        const message = issued.reason === 'at-capacity'
+            ? 'too many pending challenges, try again shortly'
+            : 'expected a wallet address'
+        res.status(status).setHeader('Content-Type', 'text/plain')
+        res.send(message)
         return
     }
 
     //return secret
     res.setHeader('Content-Type', 'text/plain')
-    res.send(secret)
+    res.send(issued.secret)
 })
 
 const io = geckos({

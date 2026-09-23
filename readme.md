@@ -63,7 +63,11 @@ Reward authorization is only emitted after these server-owned flags are true:
 
 `POST /challenge` is the only unauthenticated public input. It rejects anything that
 is not a wallet address, challenges expire after five minutes, and the pending map is
-capped and pruned, so anonymous requests cannot grow it without bound. A challenge is
+capped and pruned, so anonymous requests cannot grow it without bound. At capacity the
+new request is refused rather than the oldest pending challenge being evicted: issuing
+costs an anonymous caller nothing, so evicting would let a flood drop a real user's
+challenge while they were still signing it. An address that is already pending can
+always refresh its own challenge, so a legitimate retry is never blocked. A challenge is
 consumed on the first verification attempt whether or not it succeeds.
 
 A connection is authorized by signing that single-use challenge, and that signature is

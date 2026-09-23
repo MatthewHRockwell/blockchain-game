@@ -20,28 +20,34 @@ function pruneExpired(authRequest, now) {
  * request body verbatim: any string became a map key, with no expiry and no ceiling,
  * so a loop of anonymous posts grew the map without bound.
  *
- * @returns {string|null} the challenge, or null when the address is not an address
+ * At capacity this refuses the *new* request rather than evicting the oldest pending
+ * challenge. Evicting looks tidier but is a login denial-of-service: issuing costs an
+ * anonymous caller nothing, so flooding generated addresses would drop a real user's
+ * challenge while they were still signing it, and their authorization would then fail.
+ * Re-issuing for an address that is already pending always succeeds, since it replaces
+ * its own entry and adds no growth.
+ *
+ * @returns {{ ok: true, secret: string } | { ok: false, reason: "invalid-address" | "at-capacity" }}
  */
 export function createChallenge(
   authRequest,
   address,
   { now = Date.now(), ttlMs = CHALLENGE_TTL_MS, maxPending = MAX_PENDING_CHALLENGES } = {}
 ) {
-  if (typeof address !== "string" || !ethers.utils.isAddress(address)) return null
+  if (typeof address !== "string" || !ethers.utils.isAddress(address)) {
+    return { ok: false, reason: "invalid-address" }
+  }
 
-  authRequest.delete(address)
   pruneExpired(authRequest, now)
 
-  // Map iteration is insertion-ordered, so the front is the oldest pending challenge.
-  while (authRequest.size >= maxPending) {
-    const oldest = authRequest.keys().next()
-    if (oldest.done) break
-    authRequest.delete(oldest.value)
+  // Replacing an existing entry cannot grow the map, so it is always allowed.
+  if (!authRequest.has(address) && authRequest.size >= maxPending) {
+    return { ok: false, reason: "at-capacity" }
   }
 
   const secret = ethers.utils.keccak256(ethers.utils.randomBytes(8))
   authRequest.set(address, { secret, expiresAt: now + ttlMs })
-  return secret
+  return { ok: true, secret }
 }
 
 /**
