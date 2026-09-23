@@ -8,7 +8,15 @@ export function createChallenge(authRequest, address) {
   return secret
 }
 
-export function verifyAuthorization(auth, { authRequest, sessions, logger = console }) {
+/**
+ * Authorize a connection from a signed challenge.
+ *
+ * Deliberately does not consider whether a session already exists for the address:
+ * a valid signature proves ownership, so a reconnecting player supersedes their own
+ * stale session rather than being refused. See server/sessions.js for why that
+ * matters — WebRTC can take ~13s to report that the previous peer is gone.
+ */
+export function verifyAuthorization(auth, { authRequest, logger = console }) {
   if (typeof auth !== "string") return false
 
   const token = auth.split(" ")
@@ -16,12 +24,6 @@ export function verifyAuthorization(auth, { authRequest, sessions, logger = cons
   const sig = token[1]
 
   if (!address || !sig || !ethers.utils.isAddress(address)) return false
-
-  if (sessions.has(address)) {
-    logger.log("session in progress")
-    authRequest.delete(address)
-    return false
-  }
 
   const secret = authRequest.get(address)
   if (!secret) return false

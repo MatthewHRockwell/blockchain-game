@@ -61,6 +61,18 @@ Reward authorization is only emitted after these server-owned flags are true:
 - `artifactRecovered`
 - `completed`
 
+A connection is authorized by signing the server's single-use challenge, and that
+signature is the only gate. A fresh login supersedes any session still registered for
+the same address rather than being refused: the signature already proves ownership, so
+refusing protects nothing and only locks out a player who reconnected. This matters
+because WebRTC takes roughly 13 seconds to report that a closed peer is gone, so a
+refresh used to fail for that whole window. The superseded session has its scene
+stopped and its channel closed. Two ordering hazards follow from that, both handled in
+`server/sessions.js`: a stale disconnect arrives after the takeover, so the registry
+only clears an address that still maps to the disconnecting session; and stopping a
+scene does not remove the channel handlers it installed, so state writes are gated on
+session identity and a superseded session can never roll the live one back.
+
 Movement is simulated in fixed-size substeps against a clamped frame delta. Collision
 is otherwise only tested at a step's destination, so a long server stall could produce
 a step wider than a solid and walk the player through it; the narrowest solid in the
@@ -286,6 +298,7 @@ CLIENT_URL=http://localhost:4173 npm run e2e:screenshots
 commons/adventure/        Shared parser schema, command parser, room definitions
 server/auth.js            Testable local challenge/signature authorization helpers
 server/persistence.js     File-backed player state store with debounced atomic writes
+server/sessions.js        Session registry with signature-verified takeover
 server/game/adventure/    Server-owned state and authoritative action engine
 server/game/scenes/       Headless Phaser authoritative session scene
 client/src/scenes/        Wallet connection, Geckos connection, rendered adventure UI
