@@ -9,6 +9,7 @@ import { ethers } from "ethers"
 import dotenv from 'dotenv'
 import { iceServers } from "@geckos.io/server"
 import { createChallenge, verifyAuthorization } from './auth.js'
+import { createSessionRegistry } from './sessions.js'
 import { createStateStore } from './persistence.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -28,8 +29,24 @@ const server = http.createServer(app)
 app.use(cors())
 app.use(express.text())
 
+function stopGame(game) {
+    try {
+        game.scene.stop('adventure')
+        game.loop.stop()
+    } catch (error) {
+        console.error('failed to stop game loop:', error?.message || error)
+    }
+}
+
 const authRequest = new Map()
-const sessions = new Map()
+// Stops a superseded session: the scene first, so it writes no further state, then
+// the channel so the old tab is told to go away instead of lingering as a zombie.
+const sessions = createSessionRegistry({
+    stopSession: ({ game, channel }) => {
+        stopGame(game)
+        channel?.close?.()
+    }
+})
 const playerStates = createStateStore({
     filePath: process.env.STATE_FILE || path.join(serverDir, 'data', 'player-states.json')
 })
@@ -66,7 +83,7 @@ app.post("/challenge", (req, res) => {
 const io = geckos({
     //verify address used
     authorization: (auth, req, res) => {
-        return verifyAuthorization(auth, { authRequest, sessions })
+        return verifyAuthorization(auth, { authRequest })
     },
     cors: { allowAuthorization: true },
     iceServers: process.env.NODE_ENV === 'production' ? iceServers : []
@@ -89,16 +106,18 @@ io.onConnection(channel => {
         onStateChange: (state) => playerStates.set(address, state)
     })
 
-    //add game to sessions map
-    sessions.set(address, game)
+    // Registering supersedes any session still held for this address. The newcomer
+    // already proved ownership by signing the challenge.
+    const session = { game, channel }
+    sessions.start(address, session)
 
-    //delete sessions from sessions map after dc
     channel.onDisconnect(() => {
-        sessions.delete(address)
-        game.scene.stop('adventure')
-        game.loop.stop()
+        // A superseded channel disconnects long after it was replaced, so only clear
+        // the registry when it still points at this session.
+        const wasCurrent = sessions.endIfCurrent(address, session)
+        stopGame(game)
         playerStates.flush()
-        console.log(address, 'disconnected')
+        console.log(address, wasCurrent ? 'disconnected' : 'disconnected (already superseded)')
     })
 })
 
