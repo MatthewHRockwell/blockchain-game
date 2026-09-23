@@ -8,7 +8,7 @@ export const CLUES = {
   [CLUE_IDS.TEMPLE_SEQUENCE]: {
     id: CLUE_IDS.TEMPLE_SEQUENCE,
     title: "Expedition journal",
-    text: "The door listens in this order: star, rain, jaguar. The writer adds that the jaguar was very smug about being last."
+    text: `The door listens in this order: ${SYMBOL_SEQUENCE.join(", ")}. The writer adds that the ${SYMBOL_SEQUENCE[SYMBOL_SEQUENCE.length - 1]} was very smug about being last.`
   }
 }
 
@@ -284,7 +284,7 @@ export const ROOMS = {
     name: "Temple Entrance",
     palette: { ground: 0x58645a, shade: 0x252c2b, accent: 0xd0b56c },
     spawn: { x: 68, y: 220 },
-    look: "A stone doorway rises from the roots. Three glyphs wait beside the sealed door: star, rain, and jaguar.",
+    look: "A stone doorway rises from the roots. Three worn glyphs are set into the stone beside it, in no order that means anything yet.",
     objective: "Enter the journal's symbol sequence to open the temple door.",
     bounds: WORLD_SIZE,
     objects: [

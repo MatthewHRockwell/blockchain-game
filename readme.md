@@ -61,8 +61,13 @@ Reward authorization is only emitted after these server-owned flags are true:
 - `artifactRecovered`
 - `completed`
 
-A connection is authorized by signing the server's single-use challenge, and that
-signature is the only gate. A fresh login supersedes any session still registered for
+`POST /challenge` is the only unauthenticated public input. It rejects anything that
+is not a wallet address, challenges expire after five minutes, and the pending map is
+capped and pruned, so anonymous requests cannot grow it without bound. A challenge is
+consumed on the first verification attempt whether or not it succeeds.
+
+A connection is authorized by signing that single-use challenge, and that signature is
+the only gate. A fresh login supersedes any session still registered for
 the same address rather than being refused: the signature already proves ownership, so
 refusing protects nothing and only locks out a player who reconnected. This matters
 because WebRTC takes roughly 13 seconds to report that a closed peer is gone, so a
@@ -90,7 +95,7 @@ Rooms use stable IDs rather than display strings:
 2. `jungle-trail` - cut obstructing vines with the machete.
 3. `river-crossing` - collect rope and repair the bridge.
 4. `abandoned-camp` - read the expedition journal and record the glyph clue.
-5. `temple-entrance` - enter the three-symbol sequence on the glyph controls.
+5. `temple-entrance` - enter the three-symbol sequence on the glyph controls. The order comes from the journal; the room does not give it away.
 6. `inner-temple` - recover the artifact and unlock the server-authorized reward.
 
 Movement uses WASD or arrow keys. Commands are typed into the command line and submitted with Enter. Useful commands include:

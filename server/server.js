@@ -71,9 +71,16 @@ app.get("/signer", (req, res) => {
 //request authentication secret
 app.post("/challenge", (req, res) => {
     //get address
-    const address = req.body
+    const address = typeof req.body === 'string' ? req.body.trim() : ''
 
+    // createChallenge validates the address and bounds the pending map; a null here
+    // means the body was not an address at all.
     const secret = createChallenge(authRequest, address)
+    if (!secret) {
+        res.status(400).setHeader('Content-Type', 'text/plain')
+        res.send('expected a wallet address')
+        return
+    }
 
     //return secret
     res.setHeader('Content-Type', 'text/plain')

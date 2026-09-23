@@ -1,10 +1,46 @@
 import { ethers } from "ethers"
 import generateTypedAuth from "../commons/auth.mjs"
 
-export function createChallenge(authRequest, address) {
+/** How long an unclaimed challenge stays usable. */
+export const CHALLENGE_TTL_MS = 5 * 60 * 1000
+
+/** Ceiling on unclaimed challenges, so anonymous requests cannot grow the map forever. */
+export const MAX_PENDING_CHALLENGES = 500
+
+function pruneExpired(authRequest, now) {
+  for (const [key, entry] of authRequest) {
+    if (!entry || entry.expiresAt <= now) authRequest.delete(key)
+  }
+}
+
+/**
+ * Issue a single-use challenge for an address.
+ *
+ * `POST /challenge` is the one unauthenticated public input, and it used to take the
+ * request body verbatim: any string became a map key, with no expiry and no ceiling,
+ * so a loop of anonymous posts grew the map without bound.
+ *
+ * @returns {string|null} the challenge, or null when the address is not an address
+ */
+export function createChallenge(
+  authRequest,
+  address,
+  { now = Date.now(), ttlMs = CHALLENGE_TTL_MS, maxPending = MAX_PENDING_CHALLENGES } = {}
+) {
+  if (typeof address !== "string" || !ethers.utils.isAddress(address)) return null
+
   authRequest.delete(address)
+  pruneExpired(authRequest, now)
+
+  // Map iteration is insertion-ordered, so the front is the oldest pending challenge.
+  while (authRequest.size >= maxPending) {
+    const oldest = authRequest.keys().next()
+    if (oldest.done) break
+    authRequest.delete(oldest.value)
+  }
+
   const secret = ethers.utils.keccak256(ethers.utils.randomBytes(8))
-  authRequest.set(address, secret)
+  authRequest.set(address, { secret, expiresAt: now + ttlMs })
   return secret
 }
 
@@ -16,7 +52,7 @@ export function createChallenge(authRequest, address) {
  * stale session rather than being refused. See server/sessions.js for why that
  * matters — WebRTC can take ~13s to report that the previous peer is gone.
  */
-export function verifyAuthorization(auth, { authRequest, logger = console }) {
+export function verifyAuthorization(auth, { authRequest, now = Date.now(), logger = console }) {
   if (typeof auth !== "string") return false
 
   const token = auth.split(" ")
@@ -25,21 +61,26 @@ export function verifyAuthorization(auth, { authRequest, logger = console }) {
 
   if (!address || !sig || !ethers.utils.isAddress(address)) return false
 
-  const secret = authRequest.get(address)
-  if (!secret) return false
+  const entry = authRequest.get(address)
+  // Single use whatever happens next, so a challenge cannot be retried or replayed.
+  authRequest.delete(address)
+  if (!entry) return false
 
-  const { domain, types, value } = generateTypedAuth(secret)
+  if (entry.expiresAt <= now) {
+    logger.log("challenge expired")
+    return false
+  }
+
+  const { domain, types, value } = generateTypedAuth(entry.secret)
 
   try {
     const recoveredAddress = ethers.utils.verifyTypedData(domain, types, value, sig)
     if (recoveredAddress.toLowerCase() === address.toLowerCase()) {
-      authRequest.delete(address)
       return { address }
     }
   } catch (error) {
     logger.log("invalid auth signature")
   }
 
-  authRequest.delete(address)
   return false
 }
