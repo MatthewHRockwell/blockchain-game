@@ -48,9 +48,22 @@ export function createSessionRegistry({ stopSession, logger = console } = {}) {
     return true
   }
 
+  /**
+   * Whether this session is still the live one for the address.
+   *
+   * Stopping a Phaser scene does not unregister the `channel.on(...)` handlers the
+   * scene installed, and closing a superseded channel fires its own disconnect
+   * handler, which persists. Both run after the replacement has registered, so every
+   * write must be gated on this or a stale snapshot overwrites the live session.
+   */
+  function isCurrent(address, session) {
+    return sessions.get(address) === session
+  }
+
   return {
     start,
     endIfCurrent,
+    isCurrent,
     has: (address) => sessions.has(address),
     get: (address) => sessions.get(address),
     get size() {

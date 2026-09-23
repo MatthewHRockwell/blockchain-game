@@ -97,19 +97,24 @@ io.onConnection(channel => {
 
     //create new game instance
     const game = new Phaser.Game(config)
+    const session = { game, channel }
+
+    // Supersede before the scene starts, so the outgoing session is already stopped
+    // and marked stale by the time this one reads its initial state.
+    sessions.start(address, session)
 
     //set scene for game
     game.scene.add('adventure', AdventureScene, true, {
         channel,
         wallet,
         initialState: playerStates.get(address),
-        onStateChange: (state) => playerStates.set(address, state)
+        // Gated on session identity. Stopping a scene leaves its channel handlers
+        // installed, and closing a superseded channel fires that scene's disconnect
+        // persist — both would otherwise overwrite this session with a stale snapshot.
+        onStateChange: (state) => {
+            if (sessions.isCurrent(address, session)) playerStates.set(address, state)
+        }
     })
-
-    // Registering supersedes any session still held for this address. The newcomer
-    // already proved ownership by signing the challenge.
-    const session = { game, channel }
-    sessions.start(address, session)
 
     channel.onDisconnect(() => {
         // A superseded channel disconnects long after it was replaced, so only clear

@@ -92,3 +92,50 @@ test("sessions for different addresses do not interfere", () => {
   assert.equal(registry.get(ADDRESS).id, "a")
   assert.equal(registry.get(other).id, "b")
 })
+
+test("a superseded session cannot write state over the one that replaced it", () => {
+  // Stopping a Phaser scene leaves its channel handlers installed, and closing the
+  // superseded channel fires that scene's own disconnect persist. Both run after the
+  // replacement registered, so writes have to be gated on session identity.
+  const registry = createSessionRegistry({ stopSession: () => {}, logger: silentLogger })
+  const store = new Map()
+
+  // Mirrors the server's onStateChange wiring: each scene closes over its own session.
+  const writerFor = (session) => (state) => {
+    if (registry.isCurrent(ADDRESS, session)) store.set(ADDRESS, state)
+  }
+
+  const oldSession = { id: "old" }
+  registry.start(ADDRESS, oldSession)
+  const writeOld = writerFor(oldSession)
+  writeOld({ room: "crash-site" })
+  assert.deepEqual(store.get(ADDRESS), { room: "crash-site" })
+
+  const newSession = { id: "new" }
+  registry.start(ADDRESS, newSession)
+  const writeNew = writerFor(newSession)
+
+  // The replacement makes progress.
+  writeNew({ room: "inner-temple" })
+
+  // Now the stale channel finally delivers a queued event and then disconnects.
+  writeOld({ room: "crash-site" })
+  writeOld({ room: "crash-site" })
+
+  assert.deepEqual(
+    store.get(ADDRESS),
+    { room: "inner-temple" },
+    "the superseded session rolled the live session back"
+  )
+})
+
+test("isCurrent tracks the live session and forgets it on disconnect", () => {
+  const registry = createSessionRegistry({ stopSession: () => {}, logger: silentLogger })
+  const session = { id: "only" }
+
+  assert.equal(registry.isCurrent(ADDRESS, session), false, "not registered yet")
+  registry.start(ADDRESS, session)
+  assert.equal(registry.isCurrent(ADDRESS, session), true)
+  registry.endIfCurrent(ADDRESS, session)
+  assert.equal(registry.isCurrent(ADDRESS, session), false, "cleared after disconnect")
+})

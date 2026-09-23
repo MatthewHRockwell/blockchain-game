@@ -67,9 +67,11 @@ the same address rather than being refused: the signature already proves ownersh
 refusing protects nothing and only locks out a player who reconnected. This matters
 because WebRTC takes roughly 13 seconds to report that a closed peer is gone, so a
 refresh used to fail for that whole window. The superseded session has its scene
-stopped and its channel closed, and because a stale disconnect arrives after the
-takeover, the registry only clears an address that still maps to the disconnecting
-session (`server/sessions.js`).
+stopped and its channel closed. Two ordering hazards follow from that, both handled in
+`server/sessions.js`: a stale disconnect arrives after the takeover, so the registry
+only clears an address that still maps to the disconnecting session; and stopping a
+scene does not remove the channel handlers it installed, so state writes are gated on
+session identity and a superseded session can never roll the live one back.
 
 Movement is simulated in fixed-size substeps against a clamped frame delta. Collision
 is otherwise only tested at a step's destination, so a long server stall could produce
