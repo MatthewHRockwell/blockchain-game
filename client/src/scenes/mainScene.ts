@@ -61,6 +61,8 @@ export class MainScene extends Phaser.Scene {
   sound_?: SoundEngine
   muteButton?: HTMLButtonElement
   footstepElapsed = 0
+  touchControls?: HTMLDivElement
+  dpad = { up: false, down: false, left: false, right: false }
   roomDecor: Array<Phaser.GameObjects.GameObject> = []
   roomRenderKey = ''
 
@@ -236,6 +238,12 @@ export class MainScene extends Phaser.Scene {
           <button class="claim-button" type="button">Claim NFT</button>
         </div>
       </aside>
+      <div class="touch-controls">
+        <button class="dpad-button dpad-up" type="button" data-dir="up" aria-label="Move up">▲</button>
+        <button class="dpad-button dpad-left" type="button" data-dir="left" aria-label="Move left">◄</button>
+        <button class="dpad-button dpad-right" type="button" data-dir="right" aria-label="Move right">►</button>
+        <button class="dpad-button dpad-down" type="button" data-dir="down" aria-label="Move down">▼</button>
+      </div>
     `
 
     document.body.appendChild(root)
@@ -258,6 +266,9 @@ export class MainScene extends Phaser.Scene {
     this.commandInput.addEventListener('keydown', (event) => event.stopPropagation())
     this.claimButton.addEventListener('click', () => this.claimReward())
 
+    this.touchControls = root.querySelector('.touch-controls') as HTMLDivElement
+    this.bindTouchControls()
+
     this.muteButton = root.querySelector('.mute-button') as HTMLButtonElement
     this.muteButton.addEventListener('click', () => {
       this.sound_?.toggleMuted()
@@ -275,6 +286,61 @@ export class MainScene extends Phaser.Scene {
     window.addEventListener('keydown', resume, { once: false })
   }
 
+  /**
+   * On-screen directional pad. It feeds the same four booleans the keyboard does, so
+   * the server sees no difference. Without it a phone cannot move at all, and since
+   * every interaction requires standing near its object, the game was unfinishable on
+   * touch despite shipping a mobile screenshot.
+   */
+  bindTouchControls() {
+    const buttons = this.touchControls?.querySelectorAll<HTMLButtonElement>('[data-dir]')
+    if (!buttons) return
+
+    buttons.forEach((button) => {
+      const direction = button.dataset.dir as 'up' | 'down' | 'left' | 'right'
+
+      const press = (event: PointerEvent) => {
+        event.preventDefault()
+        this.dpad[direction] = true
+        button.classList.add('held')
+        // Typing focus would otherwise suppress movement, and the first press is
+        // also the gesture that unblocks audio.
+        this.commandInput?.blur()
+        this.sound_?.resume()
+        try {
+          button.setPointerCapture?.(event.pointerId)
+        } catch {
+          // Capture is a convenience for drags; an unsupported or inactive pointer id
+          // must not abort the press.
+        }
+      }
+
+      const release = (event: PointerEvent) => {
+        event.preventDefault()
+        this.dpad[direction] = false
+        button.classList.remove('held')
+      }
+
+      button.addEventListener('pointerdown', press)
+      button.addEventListener('pointerup', release)
+      button.addEventListener('pointercancel', release)
+      button.addEventListener('pointerleave', release)
+      // A dragged finger leaving the button still ends the press.
+      button.addEventListener('lostpointercapture', release)
+    })
+
+    window.addEventListener('blur', this.releaseDpad)
+  }
+
+  /** Nothing is held while the tab is in the background. */
+  releaseDpad = () => {
+    this.dpad.up = false
+    this.dpad.down = false
+    this.dpad.left = false
+    this.dpad.right = false
+    this.touchControls?.querySelectorAll('.dpad-button').forEach((button) => button.classList.remove('held'))
+  }
+
   renderMuteButton() {
     if (!this.muteButton) return
     const muted = this.sound_?.isMuted() ?? false
@@ -285,6 +351,7 @@ export class MainScene extends Phaser.Scene {
 
   destroyUi() {
     window.removeEventListener('resize', this.handleWindowResize)
+    window.removeEventListener('blur', this.releaseDpad)
     this.uiRoot?.remove()
   }
 
@@ -637,12 +704,23 @@ export class MainScene extends Phaser.Scene {
   }
 
   currentMovement() {
-    if (document.activeElement === this.commandInput) return [false, false, false, false]
+    // Keys are ignored while the command line has focus, so typing "west" does not
+    // also walk west. The pad is not affected: it is only reachable by touching it.
+    const typing = document.activeElement === this.commandInput
+    const keyed = typing
+      ? [false, false, false, false]
+      : [
+          Boolean(this.cursors?.up.isDown || this.wasd?.W?.isDown),
+          Boolean(this.cursors?.down.isDown || this.wasd?.S?.isDown),
+          Boolean(this.cursors?.left.isDown || this.wasd?.A?.isDown),
+          Boolean(this.cursors?.right.isDown || this.wasd?.D?.isDown)
+        ]
+
     return [
-      Boolean(this.cursors?.up.isDown || this.wasd?.W?.isDown),
-      Boolean(this.cursors?.down.isDown || this.wasd?.S?.isDown),
-      Boolean(this.cursors?.left.isDown || this.wasd?.A?.isDown),
-      Boolean(this.cursors?.right.isDown || this.wasd?.D?.isDown)
+      keyed[0] || this.dpad.up,
+      keyed[1] || this.dpad.down,
+      keyed[2] || this.dpad.left,
+      keyed[3] || this.dpad.right
     ]
   }
 

@@ -77,6 +77,59 @@ canvas {
   font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+/* Movement pad. Hidden on desktop, where the keyboard already works, and shown in the
+   compact layout over the bottom-left of the world viewport so it never covers the log
+   or the command line. --world-height is set by resizeLayout. */
+.touch-controls {
+  display: none;
+}
+
+#adventure-ui.compact .touch-controls {
+  display: grid;
+  position: fixed;
+  left: 12px;
+  /* Sits inside the world viewport with a margin, so it never spills into the panels. */
+  top: calc(var(--world-height, 300px) - 156px);
+  z-index: 5;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(3, 44px);
+  grid-template-areas:
+    ".    up    ."
+    "left .     right"
+    ".    down  .";
+  gap: 6px;
+  /* Stops the browser turning a press-and-drag into a scroll or a zoom. */
+  touch-action: none;
+}
+
+.dpad-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(134, 215, 197, 0.5);
+  border-radius: 10px;
+  background: rgba(10, 16, 15, 0.72);
+  color: #c6fff1;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dpad-button.held {
+  border-color: rgba(246, 201, 104, 0.85);
+  background: rgba(246, 201, 104, 0.22);
+  color: #f6c968;
+}
+
+.dpad-up { grid-area: up; }
+.dpad-left { grid-area: left; }
+.dpad-right { grid-area: right; }
+.dpad-down { grid-area: down; }
+
 .title-row-controls {
   display: flex;
   align-items: center;
@@ -257,6 +310,29 @@ canvas {
 .claim-panel {
   display: grid;
   gap: 10px;
+}
+
+/* At phone width the 28px title and the controls cannot share one row, which clipped
+   the title and pushed the sound button behind the panels above. */
+#adventure-ui.compact .title-row {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#adventure-ui.compact .game-title {
+  font-size: 17px;
+  letter-spacing: 0.04em;
+}
+
+#adventure-ui.compact .room-name {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+#adventure-ui.compact .mute-button,
+#adventure-ui.compact .wallet-state {
+  padding: 5px 7px;
+  font-size: 11px;
 }
 
 #adventure-ui.compact .hud-main {

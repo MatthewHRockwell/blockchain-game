@@ -102,7 +102,11 @@ Rooms use stable IDs rather than display strings:
 5. `temple-entrance` - enter the three-symbol sequence on the glyph controls. The order comes from the journal; the room does not give it away.
 6. `inner-temple` - recover the artifact and unlock the server-authorized reward.
 
-Movement uses WASD or arrow keys. Commands are typed into the command line and submitted with Enter. Useful commands include:
+Movement uses WASD or arrow keys. On narrow screens an on-screen directional pad
+appears over the world view and feeds the server the same four inputs the keyboard
+does, so the game is completable on a phone: walk with the pad, type with the
+on-screen keyboard. Commands are typed into the command line and submitted with
+Enter. Useful commands include:
 
 ```text
 LOOK
@@ -340,6 +344,7 @@ Player states survive server restarts. The server keeps authoritative state in a
 - The legacy Vite 2 build still emits a single large chunk, dominated by Phaser and ethers v5; a Vite major upgrade and code splitting were intentionally deferred. Web3Modal was dropped in favour of a direct injected-provider request, since only injected wallets were ever supported, cutting the gzipped bundle by roughly a third.
 - The art and audio are both fully procedural (layered scenery, particles, and lighting drawn in code; sound synthesised from oscillators and shaped noise) plus the starter knight sprite. There is no external sprite pack and no audio files, which keeps the repository asset-free but also keeps the palette simple.
 - There is no ambient room audio, only discrete event cues, and no music.
+- Touch support covers movement only. World objects are drawn but not tappable, so interaction is still typed; the directional pad plus the on-screen keyboard is what makes a phone playthrough possible. There is no tap-to-move and no pathfinding.
 - The parser is forgiving about verbs and unambiguous partial nouns, but it still has no hint system and no `EXITS`, `AGAIN`, `DROP`, `SEARCH`, or `MAP`. Ambiguous nouns are deliberately left unresolved rather than guessed, so `LOOK AT GLYPHS` with three glyphs present asks you to be specific.
 - Test coverage is deliberately concentrated on the trust boundaries: the action engine, auth, persistence, and the claim contracts. The session scene (`server/game/scenes/adventureScene.js`), the HTTP/Geckos wiring in `server/server.js`, movement collision, and the client scenes have no unit coverage; the client is exercised only by the end-to-end harness. Room data has no structural test, so a bad exit or object position would be caught by playing rather than by CI.
 
